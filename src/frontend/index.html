@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<h1>Welcome to Tank Wars</h1>
+
+<div>
+<script>
+
+    class Example extends Phaser.Scene
+    {
+        preload ()
+        {
+            this.load.path = './assets/';
+
+            this.load.image('tank', 'tank.png');
+            this.load.image('bomb', 'bomb.png');
+        }
+
+        create ()
+        {
+            const particles = this.add.particles(0, 0, 'bomb', {
+                speed: 100,
+                scale: { start: 1, end: 0 },
+                blendMode: 'ADD'
+            });
+
+            const tank = this.physics.add.image(500, 100, 'tank');
+
+            tank.setVelocity(100, 200);
+            tank.setBounce(1, 1);
+            tank.setRotation(1);
+            tank.setCollideWorldBounds(true);
+
+            particles.startFollow(tank);
+        }
+    }
+
+    const config = {
+        type: Phaser.AUTO,
+        width: 1028,
+        height: 768,
+        scene: Example,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 200 }
+            }
+        }
+    };
+
+    const game = new Phaser.Game(config);
+</script>
+
+</div>
+
+<button>Start</button>
+
+</body>
+</html>
