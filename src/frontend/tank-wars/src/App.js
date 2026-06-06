@@ -1,9 +1,29 @@
 import logo from './logo.svg';
 import './App.css';
+import { useState } from 'react';
 import {useNavigate} from 'react-router-dom';
+
+async function fetchOrCreatePlayer(name) {
+  const response = await fetch('http://localhost:3001/api/player', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) {
+    throw new Error(`Server error: ${response.status}`);
+  }
+  return response.json();
+}
 
 function App() {
   const navigate = useNavigate();
+  const [name, setName] = useState('');
+
+  async function handleStart() {
+    const player = await fetchOrCreatePlayer(name);
+    navigate('/main', { state: { player } });
+  }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -19,7 +39,10 @@ function App() {
         >
           Learn React
         </a>
-        <button onClick={() => navigate('/main')}>Start Game</button>
+        <div>
+          <textarea value={name} onChange={e => setName(e.target.value)}></textarea>
+          <button onClick={handleStart}>Enter Player Name and Start Game</button>
+        </div>
       </header>
     </div>
   );
