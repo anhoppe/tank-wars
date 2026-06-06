@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import Phaser from 'phaser';
 import GameEditorScene from './GameEditorScene';
 import tilemapImage from './assets/tiles/tilemap.png';
@@ -97,6 +98,10 @@ function GameEditor() {
     const [tiles, setTiles] = useState([]);
     const [selectedTileId, setSelectedTileId] = useState(0);
 
+    const { state } = useLocation();
+    const map = state?.map;
+    const player = state?.player;
+
     useEffect(() => {
         let cancelled = false;
 
@@ -166,6 +171,7 @@ function GameEditor() {
         }
 
         gameRef.current.registry.set('selectedTileId', Number(selectedTileId));
+        gameRef.current.registry.set('map', map);
     }, [selectedTileId]);
 
     useEffect(() => {
@@ -184,12 +190,28 @@ function GameEditor() {
 
         gameRef.current = game;
         gameRef.current.registry.set('selectedTileId', Number(selectedTileId));
+        gameRef.current.registry.set('map', map);
         
         return () => {
             gameRef.current = null;
             game.destroy(true);
         };
     }, []);
+
+    async function handleSaveMap() {
+        if (!player?.id) {
+            console.error('player is not set', player);
+            return;
+        }
+        const mapData = gameRef.current.scene.scenes[0].getMapData();
+        console.log('Saving map for player', player.id, 'mapData length:', mapData.length);
+        const response = await fetch(`http://localhost:3001/api/map/${player.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mapData }),
+        });
+        console.log('Save map response:', response.status);
+    }
 
     return (
         <div style={styles.root}>
@@ -216,6 +238,7 @@ function GameEditor() {
                             </button>
                         ))}
                     </div>
+                    <button onClick={handleSaveMap}>Save Map</button>
                 </section>
             </aside>
         </div>

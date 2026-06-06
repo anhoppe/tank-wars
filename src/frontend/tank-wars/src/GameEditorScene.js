@@ -13,9 +13,11 @@ export default class GameEditorScene extends Phaser.Scene
 
     create ()
     {
+        const player_map = this.registry.get('map');
+        
         // Load a blank map with a 32 x 32 px tile size. This is the base tile size. This means that
         // tiles in the map will be placed on a 64 x 64 px grid.
-        const map = this.make.tilemap({ width: 25, height: 25, tileWidth: 64, tileHeight: 64 });
+        const map = this.make.tilemap({ width: player_map.width, height: player_map.height, tileWidth: 64, tileHeight: 64 });
 
         // You can also change the base tile size of map like this:
         // map.setBaseTileSize(32, 32);
@@ -23,10 +25,18 @@ export default class GameEditorScene extends Phaser.Scene
         // The current tileset image is 64 x 128, which means two 64 x 64 tiles stacked vertically.
         const tiles = map.addTilesetImage('tilemap', null, 64, 64);
 
-        // Create a layer filled with random trees
-        const layer = map.createBlankLayer('layer1', tiles);
+        // Create a layer and populate it from saved map_data (2D array of tile indices)
+        this.layer = map.createBlankLayer('layer1', tiles);
+        const layer = this.layer;
 
-        layer.randomize(0, 0, map.width, map.height, [ 0, 1 ]);
+        const mapData = JSON.parse(player_map.map_data);
+        if (Array.isArray(mapData)) {
+            mapData.forEach((row, y) => {
+                row.forEach((tileIndex, x) => {
+                    layer.putTileAt(tileIndex, x, y);
+                });
+            });
+        }
 
         //  Create a little 32x32 texture to use to show where the mouse is
         const graphics = this.make.graphics({ x: 0, y: 0, add: false, fillStyle: { color: 0xff00ff, alpha: 1 } });
@@ -86,6 +96,18 @@ export default class GameEditorScene extends Phaser.Scene
         });
 
         help.setScrollFactor(0);
+    }
+
+    getMapData() {
+        const width = this.layer.layer.width;
+        const height = this.layer.layer.height;
+        const result = Array.from({ length: height }, (_, y) =>
+            Array.from({ length: width }, (_, x) => {
+                const tile = this.layer.getTileAt(x, y);
+                return tile ? tile.index : 0;
+            })
+        );
+        return JSON.stringify(result);
     }
 
     update (time, delta)
