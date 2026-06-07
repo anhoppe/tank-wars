@@ -2,25 +2,15 @@ import logo from './logo.svg';
 import './App.css';
 import { useState } from 'react';
 import {useNavigate} from 'react-router-dom';
+import {getOrCreatePlayer} from './api';
 
-async function fetchOrCreatePlayer(name) {
-  const response = await fetch('http://localhost:3001/api/player', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  });
-  if (!response.ok) {
-    throw new Error(`Server error: ${response.status}`);
-  }
-  return response.json();
-}
 
 function App() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
 
   async function handleStart() {
-    const player = await fetchOrCreatePlayer(name);
+    const player = await getOrCreatePlayer(name);
     navigate('/main', { state: { player } });
   }
 

@@ -136,3 +136,33 @@ pub async fn set_player_map(State(data): State<Arc<AppState>>,
         }
     }
 }
+
+pub async fn get_enemies(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for enemies of player_id: {}", player_id);
+
+    let enemies_lookup = sqlx::query_as!(
+        PlayerDb,
+        r#"SELECT * FROM player WHERE id != $1"#,
+        player_id,
+    )
+    .fetch_all(&data.db)
+    .await;
+
+    match enemies_lookup {
+        Ok(enemies) => {
+            let enemy_dtos: Vec<PlayerDto> = enemies.into_iter().map(|enemy| PlayerDto {
+                id: enemy.id.to_string(),
+                name: enemy.name,
+                score: enemy.score,
+            }).collect();
+            Ok(Json(json!(enemy_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query enemies: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query enemies"}))))
+        }
+    }
+}

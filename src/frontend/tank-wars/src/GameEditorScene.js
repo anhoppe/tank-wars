@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import tilemapImage from './assets/tiles/tilemap.png';
 import cursorImage from './assets/cursor.png';
+
 export default class GameEditorScene extends Phaser.Scene
 {
     controls;

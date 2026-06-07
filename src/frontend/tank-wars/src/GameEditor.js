@@ -1,95 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import Phaser from 'phaser';
 import GameEditorScene from './GameEditorScene';
 import tilemapImage from './assets/tiles/tilemap.png';
 
+import { putMapDataOfPlayer } from './api';
+
 const TILE_SIZE = 64;
-
-const styles = {
-    root: {
-        display: 'flex',
-        minHeight: '100vh',
-        backgroundColor: '#f5f7fb'
-    },
-    controlPanel: {
-        width: '360px',
-        minWidth: '360px',
-        maxWidth: '360px',
-        boxSizing: 'border-box',
-        padding: '24px',
-        borderLeft: '1px solid #d7deea',
-        backgroundColor: '#ffffff'
-    },
-    title: {
-        marginTop: 0,
-        marginBottom: '20px'
-    },
-    controls: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-    },
-    button: {
-        padding: '10px 14px',
-        fontSize: '15px',
-        border: '1px solid #cad4e6',
-        borderRadius: '8px',
-        backgroundColor: '#f8fbff',
-        cursor: 'pointer'
-    },
-    canvasArea: {
-        flex: 1,
-        padding: '20px',
-        boxSizing: 'border-box'
-    },
-    canvasContainer: {
-        width: '100%',
-        height: '100%',
-        minHeight: '560px',
-        border: '2px dashed #bfd0ec',
-        borderRadius: '12px',
-        backgroundColor: '#eaf1fc'
-    },
-    tileSection: {
-        marginTop: '18px'
-    },
-    tileSectionTitle: {
-        margin: '0 0 10px 0',
-        fontSize: '16px'
-    },
-    tileGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        gap: '10px'
-    },
-    tileButton: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '10px',
-        border: '1px solid #cad4e6',
-        borderRadius: '10px',
-        backgroundColor: '#f8fbff',
-        cursor: 'pointer'
-    },
-    tileButtonSelected: {
-        border: '2px solid #2f6fd1',
-        backgroundColor: '#e8f1ff'
-    },
-    tileImage: {
-        width: '100%',
-        height: '76px',
-        objectFit: 'contain',
-        imageRendering: 'pixelated'
-    },
-    tileName: {
-        fontSize: '13px',
-        color: '#34496b'
-    }
-};
-
 
 function GameEditor() {
     const gameContainerRef = useRef(null);
@@ -101,6 +19,8 @@ function GameEditor() {
     const { state } = useLocation();
     const map = state?.map;
     const player = state?.player;
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         let cancelled = false;
@@ -205,40 +125,41 @@ function GameEditor() {
         }
         const mapData = gameRef.current.scene.scenes[0].getMapData();
         console.log('Saving map for player', player.id, 'mapData length:', mapData.length);
-        const response = await fetch(`http://localhost:3001/api/map/${player.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mapData }),
-        });
-        console.log('Save map response:', response.status);
+
+        putMapDataOfPlayer(player.id, mapData);
+
+    }
+
+    function handleExit() {
+        navigate('/main', { state: { player } });
     }
 
     return (
-        <div style={styles.root}>
-            <main style={styles.canvasArea}>
-                <div ref={gameContainerRef} style={styles.canvasContainer} />
+        <div className="root">
+            <main className="canvas-area">
+                <div ref={gameContainerRef} className="canvas-container" />
             </main>
 
-            <aside style={styles.controlPanel}>
-                <section style={styles.tileSection}>
-                    <h2 style={styles.tileSectionTitle}>Tile Images</h2>
-                    <div style={styles.tileGrid}>
+            <aside className="control-panel">
+                <section className="tile-section">
+                    <h2 className="tile-section-title">Tile Images</h2>
+                    <div className="tile-grid">
                         {tiles.map((tile) => (
                             <button
                                 key={tile.id}
                                 type="button"
-                                style={{
-                                    ...styles.tileButton,
-                                    ...(selectedTileId === tile.id ? styles.tileButtonSelected : {})
-                                }}
+                                className={`tile-button${selectedTileId === tile.id ? ' tile-button-selected' : ''}`}
                                 onClick={() => setSelectedTileId(tile.id)}
                             >
-                                <img src={tile.src} alt={tile.name} style={styles.tileImage} />
-                                <span style={styles.tileName}>{tile.name}</span>
+                                <img src={tile.src} alt={tile.name} className="tile-image" />
+                                <span className="tile-name">{tile.name}</span>
                             </button>
                         ))}
                     </div>
-                    <button onClick={handleSaveMap}>Save Map</button>
+                    <div>
+                        <button onClick={handleSaveMap}>Save Map</button>
+                        <button onClick={handleExit}>Exit</button>
+                    </div>
                 </section>
             </aside>
         </div>
