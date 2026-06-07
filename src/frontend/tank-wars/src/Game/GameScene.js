@@ -1,12 +1,20 @@
 import Phaser from 'phaser';
 import tilemapImage from '../assets/tiles/tilemap.png';
+import playerBaseImage from '../assets/player/base.png';
 
 export default class GameScene extends Phaser.Scene {
     controls;
+    playerBase;
+    aKey;
+    dKey;
+    wKey;
+    sKey;
 
     preload ()
     {
         this.load.image('tilemap', tilemapImage);
+
+        this.load.image('player-base', playerBaseImage);
     }
 
     create ()
@@ -33,24 +41,44 @@ export default class GameScene extends Phaser.Scene {
             });
         }
 
-        //  Create a little 32x32 texture to use to show where the mouse is
-        const graphics = this.make.graphics({ x: 0, y: 0, add: false, fillStyle: { color: 0xff00ff, alpha: 1 } });
-
-        graphics.fillRect(0, 0, 64, 64);
-
-        graphics.generateTexture('cursor', 64, 64);
+        this.playerBase = this.add.sprite(100, 100, 'player-base');
     
-        const cursorKeys = this.input.keyboard.createCursorKeys();
+        // Keyboard control
+        this.aKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+        this.dKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+        this.wKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        this.sKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
 
-        const controlConfig = {
-            camera: this.cameras.main,
-            left: cursorKeys.left,
-            right: cursorKeys.right,
-            up: cursorKeys.up,
-            down: cursorKeys.down,
-            speed: 0.5
-        };
+        // Camera control
+        this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+        this.cameras.main.startFollow(this.playerBase);
+    }
 
-        this.controls = new Phaser.Cameras.Controls.FixedKeyControl(controlConfig);
+    update (time, delta)
+    {
+        if (this.aKey.isDown)
+        {
+            this.playerBase.angle -= 0.4;
+        }
+
+        if (this.dKey.isDown)
+        {
+            this.playerBase.angle += 0.4;
+        } 
+
+        let velocity = 0;
+        if (this.wKey.isDown)
+        {
+            velocity = -2;
+        }
+        if (this.sKey.isDown)
+        {
+            velocity = 2;
+        }
+
+        const velocityX = -Math.cos(this.playerBase.angle / 180 * Math.PI) * velocity;
+        const velocityY = -Math.sin(this.playerBase.angle / 180 * Math.PI) * velocity;
+        this.playerBase.x += velocityX;
+        this.playerBase.y += velocityY;
     }
 }

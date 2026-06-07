@@ -44,8 +44,8 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
                         score: player.score,
                     };
 
-                    let width: usize = 20;
-                    let height: usize = 20;
+                    let width: usize = 100;
+                    let height: usize = 100;
                     let empty_map: Vec<Vec<i32>> = vec![vec![0; width]; height];
                     let map_data = serde_json::to_string(&empty_map).unwrap();
 
