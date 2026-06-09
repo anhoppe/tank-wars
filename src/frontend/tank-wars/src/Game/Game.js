@@ -24,6 +24,10 @@ function Game() {
             width: 1280,
             height: 1024,
             parent: gameContainerRef.current,
+            physics: {
+                default: 'arcade',
+                arcade: { debug: true }
+            },
             scene: GameScene,
         });
 

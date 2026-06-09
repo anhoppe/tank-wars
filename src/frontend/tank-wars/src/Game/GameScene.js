@@ -1,24 +1,28 @@
 import Phaser from 'phaser';
 import tilemapImage from '../assets/tiles/tilemap.png';
 import playerBaseImage from '../assets/player/base.png';
+import playerTurretImage from '../assets/player/turret.png';
 
 export default class GameScene extends Phaser.Scene {
     controls;
     playerBase;
+    playerTurret;
     aKey;
     dKey;
     wKey;
     sKey;
 
-    preload ()
+    preload()
     {
         this.load.image('tilemap', tilemapImage);
 
         this.load.image('player-base', playerBaseImage);
+        this.load.image('player-turret', playerTurretImage);
     }
 
-    create ()
+    create()
     {
+        // Setup Map
         const enemy_map = this.registry.get('map');
         
         // Load a blank map with a 32 x 32 px tile size. This is the base tile size. This means that
@@ -40,14 +44,28 @@ export default class GameScene extends Phaser.Scene {
                 });
             });
         }
+        this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
-        this.playerBase = this.add.sprite(100, 100, 'player-base');
-    
+        // Setup Player
+        this.playerSpriteGroup = this.physics.add.group();
+        this.playerBase = this.playerSpriteGroup.create(100, 100, 'player-base')
+        this.playerTurret = this.playerSpriteGroup.create(100, 100, 'player-turret')
+
+        this.playerBase.setCollideWorldBounds(true)
+        this.playerTurret.setCollideWorldBounds(true)
+
         // Keyboard control
         this.aKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
         this.dKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
         this.wKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.sKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+
+        // Mouse control
+        // Hide mouse pointer
+        this.sys.canvas.style.cursor = 'none'
+
+        // Disable context menu
+        this.input.mouse.disableContextMenu();
 
         // Camera control
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -69,16 +87,28 @@ export default class GameScene extends Phaser.Scene {
         let velocity = 0;
         if (this.wKey.isDown)
         {
-            velocity = -2;
+            velocity = -700;
         }
         if (this.sKey.isDown)
         {
-            velocity = 2;
+            velocity = 700;
         }
+
+        var angleRad = this.getTurretAngleRad()
+        this.playerTurret.setRotation(angleRad)
 
         const velocityX = -Math.cos(this.playerBase.angle / 180 * Math.PI) * velocity;
         const velocityY = -Math.sin(this.playerBase.angle / 180 * Math.PI) * velocity;
-        this.playerBase.x += velocityX;
-        this.playerBase.y += velocityY;
+
+        this.playerSpriteGroup.setVelocityX(velocityX);
+        this.playerSpriteGroup.setVelocityY(velocityY);
+        // this.playerBase.x += velocityX;
+        // this.playerBase.y += velocityY;
+    }
+
+    getTurretAngleRad()
+    {
+        let angleDeg = -(this.input.mousePointer.x / 2) % 360
+        return angleDeg / 180 * Math.PI
     }
 }
