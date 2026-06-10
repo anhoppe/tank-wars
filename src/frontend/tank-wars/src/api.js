@@ -17,6 +17,14 @@ export async function getMapData(playerId) {
     return await response.json();
 }
 
+export async function getBlueprintsOfPlayer(playerId) {
+    const response = await fetch(`${BASE_URL}/blueprints/${playerId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch blueprints for player ${playerId}`);
+    }
+    return await response.json();
+}
+
 export async function getOrCreatePlayer(name) {
   const response = await fetch(`${BASE_URL}/player`, {
     method: 'POST',

@@ -11,6 +11,7 @@ export default class GameScene extends Phaser.Scene {
     dKey;
     wKey;
     sKey;
+    escKey;
 
     preload()
     {
@@ -59,6 +60,7 @@ export default class GameScene extends Phaser.Scene {
         this.dKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
         this.wKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.sKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+        this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
         // Mouse control
         // Hide mouse pointer
@@ -74,6 +76,7 @@ export default class GameScene extends Phaser.Scene {
 
     update (time, delta)
     {
+        // Evaluate keybpoard input
         if (this.aKey.isDown)
         {
             this.playerBase.angle -= 0.4;
@@ -94,16 +97,23 @@ export default class GameScene extends Phaser.Scene {
             velocity = 700;
         }
 
+        if (this.escKey.isDown)
+        {
+            this.scene.pause();
+            this.registry.get('leaveGame')();
+        }
+
+        // Rotate turret to face mouse pointer
         var angleRad = this.getTurretAngleRad()
         this.playerTurret.setRotation(angleRad)
 
+        // Move player in direction of base angle
         const velocityX = -Math.cos(this.playerBase.angle / 180 * Math.PI) * velocity;
         const velocityY = -Math.sin(this.playerBase.angle / 180 * Math.PI) * velocity;
 
         this.playerSpriteGroup.setVelocityX(velocityX);
         this.playerSpriteGroup.setVelocityY(velocityY);
-        // this.playerBase.x += velocityX;
-        // this.playerBase.y += velocityY;
+
     }
 
     getTurretAngleRad()

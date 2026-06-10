@@ -75,6 +75,36 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
     }
 }
 
+pub async fn get_player_blueprints(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for blueprints of player_id: {}", player_id);
+
+    let blueprints_lookup = sqlx::query_as!(
+        PlayerDb,
+        r#"SELECT * FROM blueprint WHERE player_id = $1"#,
+        player_id,
+    )
+    .fetch_all(&data.db)
+    .await;
+
+    match blueprints_lookup {
+        Ok(blueprints) => {
+            let blueprint_dtos: Vec<PlayerDto> = blueprints.into_iter().map(|bp| PlayerDto {
+                id: bp.id.to_string(),
+                name: bp.name,
+                score: 0, // Blueprints don't have a score, so we set it to 0
+            }).collect();
+            Ok(Json(json!(blueprint_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query blueprints: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query blueprints"}))))
+        }
+    }
+}
+
 pub async fn get_player_map(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {

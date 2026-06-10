@@ -14,3 +14,12 @@ CREATE TABLE IF NOT EXISTS map (
     height INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS blueprint (
+    id UUID PRIMARY KEY NOT NULL,
+    player_id UUID NOT NULL REFERENCES player(id),
+    combat_unit TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+

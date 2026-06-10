@@ -19,7 +19,7 @@ function Game() {
             return;
         }
 
-        const Game = new Phaser.Game({
+        const game = new Phaser.Game({
             type: Phaser.AUTO,
             width: 1280,
             height: 1024,
@@ -31,14 +31,19 @@ function Game() {
             scene: GameScene,
         });
 
-        gameRef.current = Game;
+        gameRef.current = game;
         gameRef.current.registry.set('map', mapData);
+        gameRef.current.registry.set('leaveGame', leaveGame);
 
         return () => {
-            gameRef.current = null;
-            Game.destroy(true);
+            gameRef.current = null; 
+            game.destroy(true);
         };
     }, []);
+
+    async function leaveGame() {
+        navigate('/main', { state: { player } });
+    }
 
     return (
         <div ref={gameContainerRef}/>

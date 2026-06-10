@@ -25,13 +25,31 @@
     gap: 12px;
 }
 
+
 .button {
     padding: 10px 14px;
     font-size: 15px;
-    border: 1px solid #cad4e6;
+    border: 1px solid #4a5a30;
     border-radius: 8px;
-    background-color: #f8fbff;
+    color: #f0ead6;
     cursor: pointer;
+    background-color: #6b7c3a;
+    background-image:
+        radial-gradient(ellipse 60px 40px at 10% 30%, #3d4a1f 0%, transparent 100%),
+        radial-gradient(ellipse 80px 50px at 70% 20%, #4a3a1a 0%, transparent 100%),
+        radial-gradient(ellipse 50px 60px at 40% 80%, #2e3a12 0%, transparent 100%),
+        radial-gradient(ellipse 70px 35px at 90% 70%, #5a6b2a 0%, transparent 100%),
+        radial-gradient(ellipse 45px 55px at 25% 60%, #7a5a25 0%, transparent 100%);
+}
+
+.main-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.button-full {
+    grid-column: 1 / -1;
 }
 
 .canvas-area {
