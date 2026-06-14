@@ -1,10 +1,18 @@
 
 # Combat Vehicle Tech Tree
 
+## Basic Idea
+- Player develops blueprints, a blueprint defines the developed vehicel type
+- Actual vehicels are bought from a blueprint (instance)
+- The further a blueprint is developed, the higher the price of the instance
+- It is possible to add abilities to a blueprint (e.g. turret to tank)
+- Each ability brings additional stats which can be developed in the blueprint as well
+
 ## Design Principles
 - Stats remain independently upgradeable at every tier — no tier locks previous research
 - Goal is specialization, not a single ultimate unit
 - Balance follows a scissors / stone / paper principle across vehicle types
+- Blueprint
 
 ---
 

@@ -2,4 +2,3 @@
 Another 2D Tanks with a twisted multiplayer idea
 
 
-Install Wamp.NET

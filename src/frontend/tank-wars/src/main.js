@@ -19,6 +19,11 @@ function Main() {
     return (
         <div>
             <h1>Plan your next move!</h1>
+            <div className="player-info">
+                <p>Name: {player.name}</p>
+                <p>Money: {player.money}</p>
+                <p>Score: {player.score}</p>
+            </div>
             <div className="main-actions">
                 <button className="button" onClick={handleExtendFortification}>Extend Fortification</button>
                 <button className="button" onClick={handleResearchBlueprints}>Research Blueprints</button>

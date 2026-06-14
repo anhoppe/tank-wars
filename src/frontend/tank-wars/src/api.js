@@ -37,6 +37,14 @@ export async function getOrCreatePlayer(name) {
   return response.json();
 }
 
+export async function getVehicleTypes() {
+    const response = await fetch(`${BASE_URL}/vehicle-types`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch vehicle types: ${response.status}`);
+    }
+    return await response.json();
+}
+
 export async function putMapDataOfPlayer(playerId, mapData) {
     const response = await fetch(`${BASE_URL}/map/${playerId}`, {
         method: 'PUT',

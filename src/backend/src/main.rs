@@ -1,15 +1,17 @@
-use axum::{Router, routing::get};
+use axum::{Router};
 use dotenv::dotenv;
-use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::sync::Arc;
 use tower_http::cors::{CorsLayer, Any};
 
+mod blueprint_db;
+mod blueprint_dto;
 mod handler;
-mod player_db;
-mod player_dto;
 mod map_db;
 mod map_dto;
+mod player_db;
+mod player_dto;
+mod vehicel_types_dto;
 
 pub struct AppState {
     db: PgPool,
@@ -41,9 +43,11 @@ async fn main() {
 
     // build our application with a single route
     let app = Router::new()
-        .route("/api/player", axum::routing::post(handler::get_or_create_player))
         .route("/api/enemies/{player_id}", axum::routing::get(handler::get_enemies))
+        .route("/api/blueprints/{player_id}", axum::routing::post(handler::create_blueprint).get(handler::get_blueprints_of_player))
         .route("/api/map/{player_id}", axum::routing::get(handler::get_player_map).put(handler::set_player_map))
+        .route("/api/player", axum::routing::post(handler::get_or_create_player))
+        .route("/api/vehicle-types", axum::routing::get(handler::get_vehicel_types))
         .layer(cors)
         .with_state(Arc::new(AppState { db: pool.clone() }));
 

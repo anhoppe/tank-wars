@@ -35,12 +35,40 @@ entity blueprint {
   * id : UUID <<PK>>
   --
   * player_id : UUID <<FK>>
-  * combat_unit : TEXT
+  * vehicel_type : UUID <<FK>>
+  * name : TEXT
+  * buying_price : INT
+  * total_weight : INT
   created_at : TIMESTAMPTZ
+}
+
+entity vehicel_type {
+  * id : UUID <<PK>>
+  --
+  name : TEXT
+  image_id : TEXT
+}
+
+entity basic_tank {
+  * id : UUID <<PK>>
+  * speed : INT
+  * speed_max : INT
+  * speed_price_exp : INT
+  * turret_speed : INT
+  * turret_speed_max : INT
+  * turret_speed_price_exp : INT
+  * machine_gun_damage : INT
+  * machine_gun_damage_max : INT
+  * machine_gun_damage_price_exp : INT
+  * machine_gun_reload_speed : INT
+  * machine_gun_reload_speed_max : INT
+  * machine_gun_reload_speed_price_exp : INT
 }
 
 player ||--o{ map       : "owns"
 player ||--o{ blueprint : "researches"
+vehicel_type ||--o{ blueprint : "defines"
+blueprint ||--o{ basic_tank : "upgrades"
 
 @enduml
 ```

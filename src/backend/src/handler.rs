@@ -1,10 +1,56 @@
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use axum::{Json, extract::{Path, State}, http::StatusCode, response::IntoResponse};
 use serde_json::json;
 
-use crate::{AppState, player_db::PlayerDb, player_dto::PlayerDto, map_dto::MapDto, map_db::MapDb};
+use crate::{AppState, 
+    blueprint_db::BlueprintDb,
+    blueprint_dto::BlueprintDto,
+    player_db::PlayerDb, 
+    player_dto::PlayerDto, 
+    map_dto::MapDto, 
+    map_db::MapDb,
+    vehicel_types_dto::VehicelTypesDto};
+
+pub async fn create_blueprint(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>,
+    Json(body): Json<serde_json::Value>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request to create blueprint for player_id: {}", player_id);
+
+    let name = match body["name"].as_str() {
+        Some(s) => s.to_string(),
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing name field"})))),
+    };
+
+    let new_blueprint = sqlx::query_as!(
+        BlueprintDb,
+        r#"INSERT INTO blueprint (id, player_id, name, buying_price, total_weight) VALUES (gen_random_uuid(), $1, $2, 0, 0) RETURNING id, player_id, name, buying_price, total_weight, created_at"#,
+        player_id,
+        name
+    )
+    .fetch_one(&data.db)
+    .await;
+
+    match new_blueprint {
+        Ok(blueprint) => {
+            let blueprint_dto = BlueprintDto {
+                id: blueprint.id.to_string(),
+                player_id: blueprint.player_id.to_string(),
+                name: blueprint.name,
+                buying_price: blueprint.buying_price,
+                total_weight: blueprint.total_weight,
+            };
+            Ok(Json(json!(blueprint_dto)))
+        }
+        Err(err) => {
+            eprintln!("Failed to create blueprint: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint"}))))
+        }
+    }
+}
 
 pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
     Json(body): Json<PlayerDto>,
@@ -22,6 +68,7 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
         Ok(Some(player)) => {
             let player_dto = PlayerDto {
                 id: player.id.to_string(),
+                money: player.money,
                 name: player.name,
                 score: player.score,
             };
@@ -30,7 +77,7 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
         Ok(None) => {
             let new_player = sqlx::query_as!(
                 PlayerDb,
-                r#"INSERT INTO player (id, name, score) VALUES (gen_random_uuid(), $1, 0) RETURNING id, name, score, created_at"#,
+                r#"INSERT INTO player (id, money, name, score) VALUES (gen_random_uuid(), 1000, $1, 0) RETURNING id, money, name, score, created_at"#,
                 &body.name,
             )
             .fetch_one(&data.db)
@@ -40,6 +87,7 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
                 Ok(player) => {
                     let player_dto = PlayerDto {
                         id: player.id.to_string(),
+                        money: player.money,
                         name: player.name,
                         score: player.score,
                     };
@@ -49,7 +97,7 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
                     let empty_map: Vec<Vec<i32>> = vec![vec![0; width]; height];
                     let map_data = serde_json::to_string(&empty_map).unwrap();
 
-                    let map_db = sqlx::query_as!(
+                    let _ = sqlx::query_as!(
                         MapDb,
                         r#"INSERT INTO map (id, player_id, map_data, width, height) VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING *"#,
                         player.id,
@@ -75,14 +123,14 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
     }
 }
 
-pub async fn get_player_blueprints(State(data): State<Arc<AppState>>,
+pub async fn get_blueprints_of_player(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
     println!("Received request for blueprints of player_id: {}", player_id);
 
     let blueprints_lookup = sqlx::query_as!(
-        PlayerDb,
+        BlueprintDb,
         r#"SELECT * FROM blueprint WHERE player_id = $1"#,
         player_id,
     )
@@ -91,10 +139,12 @@ pub async fn get_player_blueprints(State(data): State<Arc<AppState>>,
 
     match blueprints_lookup {
         Ok(blueprints) => {
-            let blueprint_dtos: Vec<PlayerDto> = blueprints.into_iter().map(|bp| PlayerDto {
+            let blueprint_dtos: Vec<BlueprintDto> = blueprints.into_iter().map(|bp| BlueprintDto {
                 id: bp.id.to_string(),
+                player_id: bp.player_id.to_string(),
                 name: bp.name,
-                score: 0, // Blueprints don't have a score, so we set it to 0
+                buying_price: bp.buying_price,
+                total_weight: bp.total_weight,
             }).collect();
             Ok(Json(json!(blueprint_dtos)))
         }
@@ -138,13 +188,66 @@ pub async fn get_player_map(State(data): State<Arc<AppState>>,
     }
 }
 
+pub async fn get_enemies(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for enemies of player_id: {}", player_id);
+
+    let enemies_lookup = sqlx::query_as!(
+        PlayerDb,
+        r#"SELECT * FROM player WHERE id != $1"#,
+        player_id,
+    )
+    .fetch_all(&data.db)
+    .await;
+
+    match enemies_lookup {
+        Ok(enemies) => {
+            let enemy_dtos: Vec<PlayerDto> = enemies.into_iter().map(|enemy| PlayerDto {
+                id: enemy.id.to_string(),
+                money: enemy.money,
+                name: enemy.name,
+                score: enemy.score,
+            }).collect();
+            Ok(Json(json!(enemy_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query enemies: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query enemies"}))))
+        }
+    }
+}
+
+pub async fn get_vehicel_types()
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for vehicle types");
+
+    static VEHICEL_TYPES: LazyLock<[VehicelTypesDto; 2]> = LazyLock::new(|| {
+        [
+            VehicelTypesDto { 
+                id: 1,
+                name: "Tank".to_string(), 
+                image_url: "vehicles/tank.png".to_string(), price: 400 
+            },
+            VehicelTypesDto { 
+                id: 2, 
+                name: "Truck".to_string(), 
+                image_url: "vehicles/truck.png".to_string(), price: 100 },
+        ]
+    });
+
+    Ok(Json(json!(VEHICEL_TYPES.as_slice())))
+}
+
 pub async fn set_player_map(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>,
     Json(body): Json<serde_json::Value>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
     println!("Set map for player_id: {}", player_id);
-
+   
     let map_data = match body["mapData"].as_str() {
         Some(s) => s.to_string(),
         None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing mapData field"})))),
@@ -167,32 +270,3 @@ pub async fn set_player_map(State(data): State<Arc<AppState>>,
     }
 }
 
-pub async fn get_enemies(State(data): State<Arc<AppState>>,
-    Path(player_id): Path<uuid::Uuid>)
-    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-
-    println!("Received request for enemies of player_id: {}", player_id);
-
-    let enemies_lookup = sqlx::query_as!(
-        PlayerDb,
-        r#"SELECT * FROM player WHERE id != $1"#,
-        player_id,
-    )
-    .fetch_all(&data.db)
-    .await;
-
-    match enemies_lookup {
-        Ok(enemies) => {
-            let enemy_dtos: Vec<PlayerDto> = enemies.into_iter().map(|enemy| PlayerDto {
-                id: enemy.id.to_string(),
-                name: enemy.name,
-                score: enemy.score,
-            }).collect();
-            Ok(Json(json!(enemy_dtos)))
-        }
-        Err(err) => {
-            eprintln!("Failed to query enemies: {}", err);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query enemies"}))))
-        }
-    }
-}

@@ -1,0 +1,4 @@
+- Run Postgres docker container
+  - navigate to src/backend
+  - docker compose -f docker-compose.yaml up -d
+- Setup db: **sqlx migrate run** / **sqlx migrate revert**
