@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Purpose & Intent** | Document the persistent data model for players, maps, blueprints, and component-based vehicle construction, with ADR-001 as the schema direction. |
+| **Purpose & Intent** | Document the current persistent data model for players, maps, blueprints, and component definitions. |
 | **Incoming** | DTO structs in `src/backend/src/` (`player_dto.rs`, `map_dto.rs`, `blueprint_dto.rs`) and SQL migrations in `src/backend/migrations/` |
 | **Outgoing** | Ch. 5 Building Block View (backend component), Ch. 6 Runtime View (data-access scenarios), Ch. 9 Architecture Decisions (schema choices) |
 
@@ -10,7 +10,7 @@
 
 ## Scope
 
-This document captures the current relational tables and the target component catalog layout described in ADR-001. The blueprint tech tree itself is not a hand-maintained document here; it is intended to live as seeded component data plus compatibility rules.
+This document captures the current relational tables in the backend database. The component catalog is stored as seeded component definitions, while installed blueprint parts and the full component tree are still future work.
 
 ---
 
@@ -61,93 +61,8 @@ entity component_definition {
   * power_supply : INT
 }
 
-entity component_tag {
-  * component_id : UUID <<FK>>
-  * tag : TEXT
-}
-
-entity component_requirement {
-  * id : UUID <<PK>>
-  --
-  * component_id : UUID <<FK>>
-  * requirement_type : TEXT
-  required_component_id : UUID <<FK>>
-  required_tag : TEXT
-}
-
-entity component_incompatibility {
-  * id : UUID <<PK>>
-  --
-  * component_id : UUID <<FK>>
-  * incompatibility_type : TEXT
-  blocked_component_id : UUID <<FK>>
-  blocked_tag : TEXT
-}
-
-entity component_stat_modifier {
-  * id : UUID <<PK>>
-  --
-  * component_id : UUID <<FK>>
-  * stat_key : TEXT
-  * modifier_type : TEXT
-  * value : NUMERIC
-}
-
-entity turret_component_detail {
-  * component_id : UUID <<PK, FK>>
-  --
-  * rotation_speed_deg_s : NUMERIC
-  * stabilization_bonus : NUMERIC
-}
-
-entity weapon_component_detail {
-  * component_id : UUID <<PK, FK>>
-  --
-  * reload_s : NUMERIC
-  * penetration : INT
-  * alpha_damage : INT
-  * dispersion : NUMERIC
-}
-
-entity mobility_component_detail {
-  * component_id : UUID <<PK, FK>>
-  --
-  * max_speed_bonus : NUMERIC
-  * turn_rate_bonus : NUMERIC
-  * terrain_penalty_factor : NUMERIC
-}
-
-entity blueprint_component {
-  * id : UUID <<PK>>
-  --
-  * blueprint_id : UUID <<FK>>
-  * component_id : UUID <<FK>>
-  parent_blueprint_component_id : UUID <<FK>>
-  * mount_index : INT
-}
-
-entity blueprint_rule_evaluation {
-  * id : UUID <<PK>>
-  --
-  * blueprint_id : UUID <<FK>>
-  * rule_code : TEXT
-  * rule_type : TEXT
-  * status : TEXT
-  value : NUMERIC
-}
-
 player ||--o{ map       : "owns"
 player ||--o{ blueprint : "owns"
-blueprint ||--o{ blueprint_component : "contains"
-component_definition ||--o{ component_tag : "has"
-component_definition ||--o{ component_requirement : "requires"
-component_definition ||--o{ component_incompatibility : "blocks"
-component_definition ||--o{ component_stat_modifier : "modifies"
-component_definition ||--|| turret_component_detail : "details"
-component_definition ||--|| weapon_component_detail : "details"
-component_definition ||--|| mobility_component_detail : "details"
-component_definition ||--o{ blueprint_component : "instanced as"
-blueprint ||--o{ blueprint_rule_evaluation : "records"
 
 @enduml
 ```
@@ -191,14 +106,11 @@ blueprint ||--o{ blueprint_rule_evaluation : "records"
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
 | `id` | UUID | PK, NOT NULL | |
-| `code` | TEXT | UNIQUE, NOT NULL | Stable identifier for seeded content |
-| `name` | TEXT | NOT NULL | Human-readable component name |
-| `kind` | TEXT | NOT NULL | `chassis`, `turret`, `weapon`, `mobility`, etc. |
-| `slot_type` | TEXT | NOT NULL | Where the component can be mounted |
-| `base_cost` | INT | NOT NULL | Base price contribution |
-| `base_weight` | INT | NOT NULL | Base weight contribution |
-| `power_draw` | INT | NOT NULL | Consumption value |
-| `power_supply` | INT | NOT NULL | Supply value |
+| `kind` | TEXT | NOT NULL | Component category; currently used for chassis filters |
+| `name` | TEXT | NOT NULL | Human-readable name |
+| `image_url` | TEXT | NOT NULL | Frontend asset path |
+| `price` | INT | NOT NULL | Purchase price |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
 ### `blueprint_component`
 
@@ -254,10 +166,11 @@ blueprint ||--o{ blueprint_rule_evaluation : "records"
 | `player` | `PlayerDto` | `money` and `score` are exposed; `created_at` is not |
 | `map` | `MapDto` | `created_at` is `Option<String>` |
 | `blueprint` | `BlueprintDto` | Includes `player_id`, `name`, `buying_price`, `total_weight` |
-| `component_definition` | no direct DTO yet | Intended for seed/repository use first |
+| `component_definition` | `ComponentDefinitionDto` | Maps catalog rows to API-visible component definitions |
 
 ## Notes
 
-- The existing `basic_tank` layout is treated as legacy and should be replaced by seeded component definitions and blueprint composition data.
+- The existing `component_definition` catalog is the current source of buyable chassis definitions.
+- Installed blueprint parts and hierarchical component mounting are not yet stored in the database.
 - Database reads should stay in the DAO/repository layer; DTOs should remain request/response shapes only.
 - This layout is meant to support a CLI seed step in the backend so the component catalog can be created reproducibly.

@@ -3,8 +3,8 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 
 mod blueprint_db;
 mod blueprint_dto;
-mod component_db;
-mod component_dto;
+mod component_definition_db;
+mod component_definition_dto;
 mod handler;
 mod map_db;
 mod map_dto;

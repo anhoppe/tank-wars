@@ -1,6 +1,6 @@
 -- Add up migration script here
 
-CREATE TABLE IF NOT EXISTS component (
+CREATE TABLE IF NOT EXISTS component_definition (
     id UUID PRIMARY KEY NOT NULL,
     kind TEXT NOT NULL,
     name TEXT NOT NULL,

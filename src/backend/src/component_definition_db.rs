@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Serialize, sqlx::FromRow)]
-pub struct ComponentDb {
+pub struct ComponentDefinitionDb {
      pub id: Uuid,
      pub kind: String,
      pub name: String,
@@ -11,7 +11,7 @@ pub struct ComponentDb {
      pub created_at: Option<chrono::DateTime<chrono::Utc>>,
  }
  
-pub async fn insert_component(
+pub async fn insert_component_definition(
     pool: &sqlx::PgPool,
     kind: &str,
     name: &str,
@@ -20,7 +20,7 @@ pub async fn insert_component(
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
-        INSERT INTO component (id, kind, name, image_url, price)
+        INSERT INTO component_definition (id, kind, name, image_url, price)
         VALUES (gen_random_uuid(), $1, $2, $3, $4)
         "#,
         kind, name, image_url, price
@@ -31,12 +31,12 @@ pub async fn insert_component(
     Ok(())
 }
 
-pub async fn get_all_chassis_components(pool: &sqlx::PgPool) -> Result<Vec<ComponentDb>, sqlx::Error> {
+pub async fn get_all_chassis_component_definitions(pool: &sqlx::PgPool) -> Result<Vec<ComponentDefinitionDb>, sqlx::Error> {
     let components = sqlx::query_as!(
-        ComponentDb,
+        ComponentDefinitionDb,
         r#"
         SELECT *
-        FROM component
+        FROM component_definition
         WHERE kind = 'chassis'
         "#
     )

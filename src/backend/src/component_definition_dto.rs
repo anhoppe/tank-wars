@@ -1,10 +1,10 @@
 use serde::Serialize;
 
-use crate::component_db::ComponentDb;
+use crate::component_definition_db::ComponentDefinitionDb;
 
 // Represents the vehicel types that can be foundation of a blueprint
 #[derive(Serialize)]
-pub struct ComponentDto {
+pub struct ComponentDefinitionDto {
     pub id: String,
     pub kind: String,
     pub name: String,
@@ -12,9 +12,9 @@ pub struct ComponentDto {
     pub price: i32,
 }
 
-impl From<ComponentDb> for ComponentDto {
-    fn from(component_db: ComponentDb) -> Self {
-        ComponentDto {
+impl From<ComponentDefinitionDb> for ComponentDefinitionDto {
+    fn from(component_db: ComponentDefinitionDb) -> Self {
+        ComponentDefinitionDto {
             id: component_db.id.to_string(), // Convert Uuid to String
             kind: component_db.kind,
             name: component_db.name,

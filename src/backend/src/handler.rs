@@ -7,8 +7,8 @@ use serde_json::json;
 use crate::{AppState, 
     blueprint_db::{BlueprintDb, insert_blueprint},
     blueprint_dto::BlueprintDto,
-    component_db::get_all_chassis_components,
-    component_dto::ComponentDto,
+    component_definition_db::get_all_chassis_component_definitions,
+    component_definition_dto::ComponentDefinitionDto,
     player_db::{PlayerDb, insert_player}, 
     player_dto::PlayerDto, 
     map_dto::MapDto, 
@@ -192,11 +192,11 @@ pub async fn get_vehicel_types(State(data): State<Arc<AppState>>)
 
     println!("Received request for vehicle types");
 
-    let vehicel_types_lookup = get_all_chassis_components(&data.db).await;
+    let vehicel_types_lookup = get_all_chassis_component_definitions(&data.db).await;
 
     match vehicel_types_lookup {
         Ok(components) => {
-            let component_dtos: Vec<ComponentDto> = components.into_iter().map(|component| component.into()).collect();
+            let component_dtos: Vec<ComponentDefinitionDto> = components.into_iter().map(|component| component.into()).collect();
             Ok(Json(json!(component_dtos)))
         }
         Err(err) => {
