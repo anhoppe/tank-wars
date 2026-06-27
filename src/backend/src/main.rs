@@ -1,17 +1,20 @@
-use axum::{Router};
 use dotenv::dotenv;
 use sqlx::{PgPool, postgres::PgPoolOptions};
-use std::sync::Arc;
-use tower_http::cors::{CorsLayer, Any};
 
 mod blueprint_db;
 mod blueprint_dto;
+mod component_db;
+mod component_dto;
 mod handler;
 mod map_db;
 mod map_dto;
 mod player_db;
 mod player_dto;
-mod vehicel_types_dto;
+mod seed;
+mod server;
+
+use server::serve;
+use crate::seed::seed_database;
 
 pub struct AppState {
     db: PgPool,
@@ -36,23 +39,23 @@ async fn main() {
         }
     };
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let args: Vec<String> = std::env::args().collect();
 
-    // build our application with a single route
-    let app = Router::new()
-        .route("/api/enemies/{player_id}", axum::routing::get(handler::get_enemies))
-        .route("/api/blueprints/{player_id}", axum::routing::post(handler::create_blueprint).get(handler::get_blueprints_of_player))
-        .route("/api/map/{player_id}", axum::routing::get(handler::get_player_map).put(handler::set_player_map))
-        .route("/api/player", axum::routing::post(handler::get_or_create_player))
-        .route("/api/vehicle-types", axum::routing::get(handler::get_vehicel_types))
-        .layer(cors)
-        .with_state(Arc::new(AppState { db: pool.clone() }));
+    if (args.len() < 2) || (args[1] != "serve" && args[1] != "seed") {
+        println!("Usage: {} [serve|seed]", args[0]);
+        std::process::exit(1);
+    }
 
-    // listen globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await.unwrap();
-    println!("Server started successfully at 0.0.0.0:3001");
-    axum::serve(listener, app).await.unwrap();
+    match args[1].as_str() {
+        "serve" => {
+            serve(&pool).await;
+        }
+        "seed" => {
+            seed_database(&pool).await.expect("Failed to seed database");
+        }
+        _ => {
+            println!("Unknown command: {}", args[1]);
+            std::process::exit(1);
+        }
+    }
 }

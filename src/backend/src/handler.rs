@@ -1,17 +1,18 @@
 
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use axum::{Json, extract::{Path, State}, http::StatusCode, response::IntoResponse};
 use serde_json::json;
 
 use crate::{AppState, 
-    blueprint_db::BlueprintDb,
+    blueprint_db::{BlueprintDb, insert_blueprint},
     blueprint_dto::BlueprintDto,
-    player_db::PlayerDb, 
+    component_db::get_all_chassis_components,
+    component_dto::ComponentDto,
+    player_db::{PlayerDb, insert_player}, 
     player_dto::PlayerDto, 
     map_dto::MapDto, 
-    map_db::MapDb,
-    vehicel_types_dto::VehicelTypesDto};
+    map_db::{MapDb, insert_map}};
 
 pub async fn create_blueprint(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>,
@@ -25,14 +26,7 @@ pub async fn create_blueprint(State(data): State<Arc<AppState>>,
         None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing name field"})))),
     };
 
-    let new_blueprint = sqlx::query_as!(
-        BlueprintDb,
-        r#"INSERT INTO blueprint (id, player_id, name, buying_price, total_weight) VALUES (gen_random_uuid(), $1, $2, 0, 0) RETURNING id, player_id, name, buying_price, total_weight, created_at"#,
-        player_id,
-        name
-    )
-    .fetch_one(&data.db)
-    .await;
+    let new_blueprint = insert_blueprint(&data.db, player_id, &name).await;
 
     match new_blueprint {
         Ok(blueprint) => {
@@ -75,13 +69,7 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
             Ok(Json(json!(player_dto)))
         }
         Ok(None) => {
-            let new_player = sqlx::query_as!(
-                PlayerDb,
-                r#"INSERT INTO player (id, money, name, score) VALUES (gen_random_uuid(), 1000, $1, 0) RETURNING id, money, name, score, created_at"#,
-                &body.name,
-            )
-            .fetch_one(&data.db)
-            .await;
+            let new_player = insert_player(&data.db, &body.name).await;
 
             match new_player {
                 Ok(player) => {
@@ -92,21 +80,7 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
                         score: player.score,
                     };
 
-                    let width: usize = 100;
-                    let height: usize = 100;
-                    let empty_map: Vec<Vec<i32>> = vec![vec![0; width]; height];
-                    let map_data = serde_json::to_string(&empty_map).unwrap();
-
-                    let _ = sqlx::query_as!(
-                        MapDb,
-                        r#"INSERT INTO map (id, player_id, map_data, width, height) VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING *"#,
-                        player.id,
-                        map_data,
-                        width as i32,
-                        height as i32,
-                    )
-                    .fetch_one(&data.db)
-                    .await;
+                    let _ = insert_map(&data.db, player.id).await;
 
                     Ok(Json(json!(player_dto)))
                 }
@@ -194,13 +168,7 @@ pub async fn get_enemies(State(data): State<Arc<AppState>>,
 
     println!("Received request for enemies of player_id: {}", player_id);
 
-    let enemies_lookup = sqlx::query_as!(
-        PlayerDb,
-        r#"SELECT * FROM player WHERE id != $1"#,
-        player_id,
-    )
-    .fetch_all(&data.db)
-    .await;
+    let enemies_lookup = crate::player_db::get_enemies(&data.db, player_id).await;
 
     match enemies_lookup {
         Ok(enemies) => {
@@ -219,26 +187,23 @@ pub async fn get_enemies(State(data): State<Arc<AppState>>,
     }
 }
 
-pub async fn get_vehicel_types()
+pub async fn get_vehicel_types(State(data): State<Arc<AppState>>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
     println!("Received request for vehicle types");
 
-    static VEHICEL_TYPES: LazyLock<[VehicelTypesDto; 2]> = LazyLock::new(|| {
-        [
-            VehicelTypesDto { 
-                id: 1,
-                name: "Tank".to_string(), 
-                image_url: "vehicles/tank.png".to_string(), price: 400 
-            },
-            VehicelTypesDto { 
-                id: 2, 
-                name: "Truck".to_string(), 
-                image_url: "vehicles/truck.png".to_string(), price: 100 },
-        ]
-    });
+    let vehicel_types_lookup = get_all_chassis_components(&data.db).await;
 
-    Ok(Json(json!(VEHICEL_TYPES.as_slice())))
+    match vehicel_types_lookup {
+        Ok(components) => {
+            let component_dtos: Vec<ComponentDto> = components.into_iter().map(|component| component.into()).collect();
+            Ok(Json(json!(component_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query vehicle types: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query vehicle types"}))))
+        }
+    }
 }
 
 pub async fn set_player_map(State(data): State<Arc<AppState>>,

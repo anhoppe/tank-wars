@@ -37,7 +37,7 @@ export async function getOrCreatePlayer(name) {
   return response.json();
 }
 
-export async function getVehicleTypes() {
+export async function getVehicelTypes() {
     const response = await fetch(`${BASE_URL}/vehicle-types`);
     if (!response.ok) {
         throw new Error(`Failed to fetch vehicle types: ${response.status}`);
