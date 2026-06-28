@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import reportWebVitals from './reportWebVitals';
 
 import App from './App';
+import Fleet from './Fleet';
 import Game from './Game/Game';
 import GameEditor from './GameEditor';
 import Main from './main';
@@ -17,10 +18,11 @@ root.render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/main" element={<Main />} />
-        <Route path="/game-editor" element={<GameEditor />} />
-        <Route path="/opponent-selection" element={<OpponentSelection />} />
+        <Route path="/fleet" element={<Fleet />} />
         <Route path="/game" element={<Game />} />
+        <Route path="/game-editor" element={<GameEditor />} />
+        <Route path="/main" element={<Main />} />
+        <Route path="/opponent-selection" element={<OpponentSelection />} />
         <Route path="/research-blueprints" element={<ResearchBlueprints />} />
       </Routes>
     </BrowserRouter>

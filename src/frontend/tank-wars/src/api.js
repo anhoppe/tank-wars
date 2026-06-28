@@ -12,6 +12,26 @@ export async function buyBlueprintForPlayer(playerId, chassisId) {
     return await response.json();
 }
 
+export async function buyVehicleForPlayer(playerId, blueprintId) {
+    const response = await fetch(`${BASE_URL}/fleet/${playerId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blueprintId: blueprintId }),
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to buy vehicle for player ${playerId}`);
+    }
+    return await response.json();
+}
+
+export async function getBlueprintsOfPlayer(playerId) {
+    const response = await fetch(`${BASE_URL}/blueprints/${playerId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch blueprints for player ${playerId}`);
+    }
+    return await response.json();
+}
+
 export async function getEnemies(playerId) {
     return fetch(`${BASE_URL}/enemies/${playerId}`)
     .then(res => {
@@ -21,18 +41,18 @@ export async function getEnemies(playerId) {
     .catch(err => console.error('Failed to load opponents:', err));
 }
 
-export async function getMapData(playerId) {
-    const response = await fetch(`${BASE_URL}/map/${playerId}`);
+export async function getFleetOfPlayer(playerId) {
+    const response = await fetch(`${BASE_URL}/fleet/${playerId}`);
     if (!response.ok) {
-        throw new Error(`Failed to fetch map for player ${playerId}`);
+        throw new Error(`Failed to fetch fleet for player ${playerId}`);
     }
     return await response.json();
 }
 
-export async function getBlueprintsOfPlayer(playerId) {
-    const response = await fetch(`${BASE_URL}/blueprints/${playerId}`);
+export async function getMapData(playerId) {
+    const response = await fetch(`${BASE_URL}/map/${playerId}`);
     if (!response.ok) {
-        throw new Error(`Failed to fetch blueprints for player ${playerId}`);
+        throw new Error(`Failed to fetch map for player ${playerId}`);
     }
     return await response.json();
 }

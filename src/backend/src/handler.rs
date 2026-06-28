@@ -6,15 +6,20 @@ use serde_json::json;
 
 use crate::{AppState, 
     blueprint_component_db::create_blueprint_component,
-    blueprint_db::{BlueprintDb, create_blueprint},
+    blueprint_db::{BlueprintDb, create_blueprint, get_blueprint_by_id},
     blueprint_dto::BlueprintDto,
     component_definition_db::{get_component_definition_by_id, get_all_chassis_component_definitions},
     component_definition_dto::ComponentDefinitionDto,
     player_db::{PlayerDb, get_player_by_id, insert_player, update_player}, 
     player_dto::PlayerDto, 
     map_dto::MapDto, 
-    map_db::{MapDb, insert_map}};
+    map_db::{MapDb, insert_map},
+    vehicle_db::{create_vehicle},
+    vehicle_dto::vehicle_db_to_dto,
+};
 
+type ApiError = (StatusCode, Json<serde_json::Value>);
+type ApiResult<T> = Result<T, ApiError>;
 
 pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>,
@@ -36,14 +41,7 @@ pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
         Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Component definition not found"})))),
     };
 
-    let player = get_player_by_id(&data.db, player_id)
-    .await
-    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query player"}))))?;
-
-    let mut player = match player {
-        Some(player) => player,
-        None => return Err((StatusCode::NOT_FOUND, Json(json!({"error": "Player not found"})))),
-    };
+    let mut player = load_player_or_404(&data.db, player_id).await?;
 
     if player.money < chassis.price {
         return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Insufficient funds"}))));
@@ -54,23 +52,75 @@ pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to update player"}))))?;
 
-    // let player = match player {
-    //     Some(p) => p,
-    //     Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to update player"})))),
-    // };
-
     let blueprint_name = chassis.name.clone();
-    let blueprint = create_blueprint(&data.db, player_id, blueprint_name)
+    let blueprint = create_blueprint(&data.db, player_id, blueprint_name, chassis.price)
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint"}))))?;
     
-    create_blueprint_component(&data.db, blueprint.id, component_definition_id)
+    create_blueprint_component(&data.db, blueprint.id, component_definition_id, chassis.kind, chassis.image_url)
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint component"}))))?;
 
     let player_dto: PlayerDto = player.into();
 
     Ok(Json(json!(player_dto)))
+}
+
+pub async fn buy_vehicle_for_player(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>,
+    Json(body): Json<serde_json::Value>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    
+    let blueprint_id = match body["blueprintId"].as_str() {
+        Some(s) => match uuid::Uuid::parse_str(s) {
+            Ok(id) => id,
+            Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Invalid blueprintId format"})))),
+        }
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing blueprintId field"})))),
+    };
+
+    let blueprint = match get_blueprint_by_id(&data.db, blueprint_id).await {
+        Ok(blueprint) => blueprint,
+        Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Blueprint not found"})))),
+    };
+
+    let blueprint = match blueprint {
+        Some(bp) => bp,
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Blueprint not found"})))),
+    };
+
+    let mut player = load_player_or_404(&data.db, player_id).await?;
+
+    if player.money < blueprint.buying_price {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Insufficient funds"}))));
+    }
+
+    player.money -= blueprint.buying_price;
+
+    create_vehicle(&data.db, player_id, blueprint_id)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create vehicle"}))))?;
+
+
+    let player_dto: PlayerDto = player.into();
+
+    Ok(Json(json!(player_dto)))
+}
+
+pub async fn get_vehicles_of_player(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    let vehicles = crate::vehicle_db::get_vehicles_of_player(&data.db, player_id)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query vehicles"}))))?;
+
+    let mut vehicles_dtos = Vec::with_capacity(vehicles.len());
+    for vehicle in vehicles {
+        let vehicle_dto = vehicle_db_to_dto(&data.db, vehicle).await;
+        vehicles_dtos.push(vehicle_dto);
+    }
+    Ok(Json(json!(vehicles_dtos)))
 }
 
 pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
@@ -208,7 +258,7 @@ pub async fn get_enemies(State(data): State<Arc<AppState>>,
     }
 }
 
-pub async fn get_vehicel_types(State(data): State<Arc<AppState>>)
+pub async fn get_vehicle_types(State(data): State<Arc<AppState>>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
     println!("Received request for vehicle types");
@@ -256,3 +306,14 @@ pub async fn set_player_map(State(data): State<Arc<AppState>>,
     }
 }
 
+async fn load_player_or_404(pool: &sqlx::PgPool, player_id: uuid::Uuid) -> ApiResult<PlayerDb> {
+    let player = get_player_by_id(pool, player_id)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query player"}))))?;
+
+    let player = match player {
+        Some(player) => player,
+        None => return Err((StatusCode::NOT_FOUND, Json(json!({"error": "Player not found"})))),
+    };
+    Ok(player)
+}

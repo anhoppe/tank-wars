@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS player (
     name VARCHAR(255) NOT NULL,
     score INT NOT NULL,
     money INT NOT NULL,
+    
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -43,9 +44,20 @@ CREATE TABLE IF NOT EXISTS map (
 
 CREATE TABLE IF NOT EXISTS blueprint_component (
     id UUID PRIMARY KEY NOT NULL,
-  
     blueprint_id UUID NOT NULL REFERENCES blueprint(id),
     component_definition_id UUID NOT NULL REFERENCES component_definition(id),
+
+    kind TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS vehicle (
+    id UUID PRIMARY KEY NOT NULL,
+  
+    player_id UUID NOT NULL REFERENCES player(id),
+    blueprint_id UUID NOT NULL REFERENCES blueprint(id),
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -13,6 +13,8 @@ mod player_db;
 mod player_dto;
 mod seed;
 mod server;
+mod vehicle_db;
+mod vehicle_dto;
 
 use server::serve;
 use crate::seed::seed_database;

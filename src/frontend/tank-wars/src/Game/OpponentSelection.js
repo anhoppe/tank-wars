@@ -40,6 +40,12 @@ function OpponentSelection() {
                 ))}
             </ul>
 
+            <p>Combat Vehicle</p>
+
+            <ul>    
+
+            </ul>
+
             <div>
                 <button onClick={handleStart} disabled={!selectedOpponent}>
                     Start Game
