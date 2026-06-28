@@ -1,5 +1,17 @@
 const BASE_URL = 'http://localhost:3001/api';
 
+export async function buyBlueprintForPlayer(playerId, chassisId) {
+    const response = await fetch(`${BASE_URL}/blueprints/${playerId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ componentDefinitionId: chassisId }),
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to buy blueprint for player ${playerId}`);
+    }
+    return await response.json();
+}
+
 export async function getEnemies(playerId) {
     return fetch(`${BASE_URL}/enemies/${playerId}`)
     .then(res => {

@@ -11,10 +11,10 @@ pub struct BlueprintDb {
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-pub async fn insert_blueprint(
+pub async fn create_blueprint(
     pool: &sqlx::PgPool,
     player_id: Uuid,
-    name: &str,
+    name: String,
 ) -> Result<BlueprintDb, sqlx::Error> {
     sqlx::query_as!(
         BlueprintDb,

@@ -1,36 +1,48 @@
 import { useEffect, useState } from 'react';
 import {useNavigate, useLocation} from 'react-router-dom';
 
-import { getBlueprintsOfPlayer, getVehicelTypes } from './api';
+import { getBlueprintsOfPlayer, getVehicelTypes, buyBlueprintForPlayer} from './api';
 
 
 function ResearchBlueprints() {
     const navigate = useNavigate();
     const location = useLocation();
-    const player = location.state?.player;
+    const initialPlayer = location.state?.player;
 
     const [blueprints, setBlueprints] = useState([]);
+    const [currentPlayer, setCurrentPlayer] = useState(initialPlayer);
     const [selectedId, setSelectedId] = useState('');
     const [showVehicelTypes, setShowVehicelTypes] = useState(false);
     const [vehicelTypes, setVehicleTypes] = useState([]);
 
     useEffect(() => {
-        if (!player) {
+        if (!currentPlayer) {
             return;
         }
 
         const load = async () => {
             try {
-                const blueprints = await getBlueprintsOfPlayer(player.id);
-                setBlueprints(Array.isArray(blueprints) ? blueprints : []);
-
+                setPlayerBlueprints();
                 setVehicleTypes(await getVehicelTypes());
             } catch {
                 setBlueprints([]);
             }
         };
         load();
-    }, [player]);
+    }, [currentPlayer]);
+
+    async function setPlayerBlueprints() {
+        const blueprints = await getBlueprintsOfPlayer(currentPlayer.id);
+        setBlueprints(Array.isArray(blueprints) ? blueprints : []);
+    }
+
+    async function buyBlueprint(chassisId, chassisPrice) {
+        if (currentPlayer.money < chassisPrice) {
+            return;
+        }
+        const player = await buyBlueprintForPlayer(currentPlayer.id, chassisId);
+        setCurrentPlayer(player);
+    }
 
     return (
         <div style={{ display: 'flex' }}>
@@ -58,7 +70,7 @@ function ResearchBlueprints() {
                     }}>Buy</button>
                 </div>
                 <div style={{ marginTop: 10 }}>
-                    <button onClick={() => navigate('/main', { state: { player } })}>Back</button>
+                    <button onClick={() => navigate('/main', { state: { player: currentPlayer } })}>Back</button>
                 </div>
             </div>
             {showVehicelTypes && (
@@ -68,7 +80,7 @@ function ResearchBlueprints() {
                         {vehicelTypes.map((type) => (
                             <div
                                 key={type.id}
-                                onClick={() => console.log('buy', type)}
+                                onClick={() => buyBlueprint(type.id, type.price)}
                                 style={{
                                     display: 'flex',
                                     flexDirection: 'column',

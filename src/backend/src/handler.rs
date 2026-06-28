@@ -5,45 +5,72 @@ use axum::{Json, extract::{Path, State}, http::StatusCode, response::IntoRespons
 use serde_json::json;
 
 use crate::{AppState, 
-    blueprint_db::{BlueprintDb, insert_blueprint},
+    blueprint_component_db::create_blueprint_component,
+    blueprint_db::{BlueprintDb, create_blueprint},
     blueprint_dto::BlueprintDto,
-    component_definition_db::get_all_chassis_component_definitions,
+    component_definition_db::{get_component_definition_by_id, get_all_chassis_component_definitions},
     component_definition_dto::ComponentDefinitionDto,
-    player_db::{PlayerDb, insert_player}, 
+    player_db::{PlayerDb, get_player_by_id, insert_player, update_player}, 
     player_dto::PlayerDto, 
     map_dto::MapDto, 
     map_db::{MapDb, insert_map}};
 
-pub async fn create_blueprint(State(data): State<Arc<AppState>>,
+
+pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>,
     Json(body): Json<serde_json::Value>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
-    println!("Received request to create blueprint for player_id: {}", player_id);
-
-    let name = match body["name"].as_str() {
-        Some(s) => s.to_string(),
-        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing name field"})))),
+    let component_definition_id = match body["componentDefinitionId"].as_str() {
+        Some(s) => match uuid::Uuid::parse_str(s) {
+            Ok(id) => id,
+            Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Invalid componentDefinitionId format"})))),
+        }
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing componentDefinitionId field"})))),
     };
 
-    let new_blueprint = insert_blueprint(&data.db, player_id, &name).await;
+    println!("Received request to buy blueprint for player_id: {}, component_definition_id: {}", player_id, component_definition_id);
 
-    match new_blueprint {
-        Ok(blueprint) => {
-            let blueprint_dto = BlueprintDto {
-                id: blueprint.id.to_string(),
-                player_id: blueprint.player_id.to_string(),
-                name: blueprint.name,
-                buying_price: blueprint.buying_price,
-                total_weight: blueprint.total_weight,
-            };
-            Ok(Json(json!(blueprint_dto)))
-        }
-        Err(err) => {
-            eprintln!("Failed to create blueprint: {}", err);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint"}))))
-        }
+    let chassis = match get_component_definition_by_id(&data.db, component_definition_id).await {
+        Ok(chassis) => chassis,
+        Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Component definition not found"})))),
+    };
+
+    let player = get_player_by_id(&data.db, player_id)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query player"}))))?;
+
+    let mut player = match player {
+        Some(player) => player,
+        None => return Err((StatusCode::NOT_FOUND, Json(json!({"error": "Player not found"})))),
+    };
+
+    if player.money < chassis.price {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Insufficient funds"}))));
     }
+
+    player.money -= chassis.price;
+    let player = update_player(&data.db, player)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to update player"}))))?;
+
+    // let player = match player {
+    //     Some(p) => p,
+    //     Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to update player"})))),
+    // };
+
+    let blueprint_name = chassis.name.clone();
+    let blueprint = create_blueprint(&data.db, player_id, blueprint_name)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint"}))))?;
+    
+    create_blueprint_component(&data.db, blueprint.id, component_definition_id)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint component"}))))?;
+
+    let player_dto: PlayerDto = player.into();
+
+    Ok(Json(json!(player_dto)))
 }
 
 pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
@@ -73,14 +100,8 @@ pub async fn get_or_create_player(State(data): State<Arc<AppState>>,
 
             match new_player {
                 Ok(player) => {
-                    let player_dto = PlayerDto {
-                        id: player.id.to_string(),
-                        money: player.money,
-                        name: player.name,
-                        score: player.score,
-                    };
-
                     let _ = insert_map(&data.db, player.id).await;
+                    let player_dto: PlayerDto = player.into();
 
                     Ok(Json(json!(player_dto)))
                 }

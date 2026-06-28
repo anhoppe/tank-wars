@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+mod blueprint_component_db;
 mod blueprint_db;
 mod blueprint_dto;
 mod component_definition_db;

@@ -43,5 +43,25 @@ pub async fn get_all_chassis_component_definitions(pool: &sqlx::PgPool) -> Resul
     .fetch_all(pool)
     .await?;
 
+    for component in &components {
+        println!("Component: {:?}", component);
+    }
+
     Ok(components)
+}
+
+pub async fn get_component_definition_by_id(pool: &sqlx::PgPool, component_definition_id: Uuid) -> Result<ComponentDefinitionDb, sqlx::Error> {
+    let component = sqlx::query_as!(
+        ComponentDefinitionDb,
+        r#"
+        SELECT *
+        FROM component_definition
+        WHERE id = $1
+        "#,
+        component_definition_id
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(component)
 }

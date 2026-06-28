@@ -5,7 +5,13 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
-    handler::{get_enemies, create_blueprint, get_blueprints_of_player, get_player_map, set_player_map, get_or_create_player, get_vehicel_types}
+    handler::{buy_blueprint_for_player,
+        get_enemies, 
+        get_blueprints_of_player, 
+        get_player_map, 
+        set_player_map, 
+        get_or_create_player, 
+        get_vehicel_types}
 };
 
 pub async fn serve(pool: &PgPool) {
@@ -17,7 +23,7 @@ pub async fn serve(pool: &PgPool) {
     // build our application with a single route
     let app = Router::new()
         .route("/api/enemies/{player_id}", axum::routing::get(get_enemies))
-        .route("/api/blueprints/{player_id}", axum::routing::post(create_blueprint).get(get_blueprints_of_player))
+        .route("/api/blueprints/{player_id}", axum::routing::get(get_blueprints_of_player).post(buy_blueprint_for_player))
         .route("/api/map/{player_id}", axum::routing::get(get_player_map).put(set_player_map))
         .route("/api/player", axum::routing::post(get_or_create_player))
         .route("/api/vehicle-types", axum::routing::get(get_vehicel_types))

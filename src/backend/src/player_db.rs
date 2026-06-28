@@ -27,6 +27,23 @@ pub async fn get_enemies(
     .await
 }
 
+pub async fn get_player_by_id(
+    pool: &sqlx::PgPool,
+    player_id: Uuid,
+) -> Result<Option<PlayerDb>, sqlx::Error> {
+    sqlx::query_as!(
+        PlayerDb,
+        r#"
+        SELECT *
+        FROM player
+        WHERE id = $1
+        "#,
+        player_id
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn insert_player(
     pool: &sqlx::PgPool,
     name: &str,
@@ -44,3 +61,21 @@ pub async fn insert_player(
     .await
 }
 
+pub async fn update_player(
+    pool: &sqlx::PgPool,
+    player: PlayerDb) -> Result<PlayerDb, sqlx::Error> {
+    sqlx::query_as!(
+        PlayerDb,
+        r#"
+        UPDATE player
+        SET money = $2, score = $3
+        WHERE id = $1
+        RETURNING id, money, name, score, created_at
+        "#,
+        player.id,
+        player.money,
+        player.score
+    )
+    .fetch_one(pool)
+    .await
+}

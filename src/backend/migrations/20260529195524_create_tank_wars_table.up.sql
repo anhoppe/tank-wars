@@ -41,3 +41,11 @@ CREATE TABLE IF NOT EXISTS map (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS blueprint_component (
+    id UUID PRIMARY KEY NOT NULL,
+  
+    blueprint_id UUID NOT NULL REFERENCES blueprint(id),
+    component_definition_id UUID NOT NULL REFERENCES component_definition(id),
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);

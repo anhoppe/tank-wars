@@ -10,7 +10,7 @@
 
 ## Scope
 
-This document captures the current relational tables in the backend database. The component catalog is stored as seeded component definitions, while installed blueprint parts and the full component tree are still future work.
+This document captures the current relational tables in the backend database. The component catalog is stored as seeded component definitions, and installed blueprint parts are represented in `blueprint_component`.
 
 ---
 
@@ -61,8 +61,20 @@ entity component_definition {
   * power_supply : INT
 }
 
+entity blueprint_component {
+  * id : UUID <<PK>>
+  --
+  * blueprint_id : UUID <<FK>>
+  * component_id : UUID <<FK>>
+  parent_blueprint_component_id : UUID <<FK>>
+  * mount_index : INT
+}
+
 player ||--o{ map       : "owns"
 player ||--o{ blueprint : "owns"
+blueprint ||--o{ blueprint_component : "contains"
+component_definition ||--o{ blueprint_component : "installed as"
+blueprint_component ||--o{ blueprint_component : "parent of"
 
 @enduml
 ```
@@ -171,6 +183,6 @@ player ||--o{ blueprint : "owns"
 ## Notes
 
 - The existing `component_definition` catalog is the current source of buyable chassis definitions.
-- Installed blueprint parts and hierarchical component mounting are not yet stored in the database.
+- `blueprint_component` stores installed parts on a blueprint and supports a parent-child mounting tree.
 - Database reads should stay in the DAO/repository layer; DTOs should remain request/response shapes only.
 - This layout is meant to support a CLI seed step in the backend so the component catalog can be created reproducibly.
