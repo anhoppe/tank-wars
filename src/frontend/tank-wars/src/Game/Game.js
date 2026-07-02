@@ -9,6 +9,7 @@ function Game() {
     const location = useLocation();
     const player = location.state?.player;
     const mapData = location.state?.mapData;
+    const vehicle = location.state?.vehicle;
 
     const gameContainerRef = useRef(null);
     const gameRef = useRef(null);
@@ -33,6 +34,7 @@ function Game() {
 
         gameRef.current = game;
         gameRef.current.registry.set('map', mapData);
+        gameRef.current.registry.set('vehicle', vehicle);
         gameRef.current.registry.set('leaveGame', leaveGame);
 
         return () => {

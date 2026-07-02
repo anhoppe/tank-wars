@@ -17,6 +17,7 @@ export default class GameScene extends Phaser.Scene {
     {
         this.load.image('tilemap', tilemapImage);
 
+        vehicle = this.registry.get('vehicle');
         this.load.image('player-base', playerBaseImage);
         this.load.image('player-turret', playerTurretImage);
     }
