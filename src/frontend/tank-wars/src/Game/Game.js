@@ -34,8 +34,9 @@ function Game() {
 
         gameRef.current = game;
         gameRef.current.registry.set('map', mapData);
-        gameRef.current.registry.set('vehicle', vehicle);
         gameRef.current.registry.set('leaveGame', leaveGame);
+        gameRef.current.registry.set('vehicle', vehicle);
+        gameRef.current.registry.set('player', player);
 
         return () => {
             gameRef.current = null; 

@@ -6,7 +6,8 @@ pub struct ComponentDefinitionDb {
      pub id: Uuid,
      pub kind: String,
      pub name: String,
-     pub image_url: String,
+     pub game_image_url: String,
+     pub menu_image_url: String,
      pub price: i32,
      pub created_at: Option<chrono::DateTime<chrono::Utc>>,
  }
@@ -15,15 +16,16 @@ pub async fn insert_component_definition(
     pool: &sqlx::PgPool,
     kind: &str,
     name: &str,
-    image_url: &str,
+    game_image_url: &str,
+    menu_image_url: &str,
     price: i32,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
-        INSERT INTO component_definition (id, kind, name, image_url, price)
-        VALUES (gen_random_uuid(), $1, $2, $3, $4)
+        INSERT INTO component_definition (id, kind, name, game_image_url, menu_image_url, price)
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
         "#,
-        kind, name, image_url, price
+        kind, name, game_image_url, menu_image_url, price
     )
     .execute(pool)
     .await?;

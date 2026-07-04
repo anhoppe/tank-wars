@@ -5,7 +5,8 @@ import Phaser from 'phaser';
 import GameEditorScene from './GameEditorScene';
 import tilemapImage from './assets/tiles/tilemap.png';
 
-import { putMapDataOfPlayer } from './api';
+import { getEnemies, getFleetOfPlayer, getMapData } from '../api';
+import { getFleetOfPlayer, putMapDataOfPlayer } from './api';
 
 const TILE_SIZE = 64;
 
@@ -13,13 +14,14 @@ function GameEditor() {
     const gameContainerRef = useRef(null);
     const gameRef = useRef(null);
 
-    const [tiles, setTiles] = useState([]);
+    const [playerVehicles, setPlayerVehicles] = useState([]);
     const [selectedTileId, setSelectedTileId] = useState(0);
+    const [tiles, setTiles] = useState([]);
 
     const { state } = useLocation();
     const map = state?.map;
     const player = state?.player;
-
+    const playerVehicleImages = [];
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -28,14 +30,22 @@ function GameEditor() {
         const source = new Image();
         source.src = tilemapImage;
 
+        getFleetOfPlayer(player.id).then(setPlayerVehicles);
+
+        for (let vehicle in playerVehicles) {
+            let image = 
+        }
+
         source.onload = () => {
             if (cancelled) {
                 return;
             }
 
-            const columns = Math.floor(source.width / TILE_SIZE);
+            const columns = Math.floor
+            (source.width / TILE_SIZE);
             const rows = Math.floor(source.height / TILE_SIZE);
             const extractedTiles = [];
+            const playerVehicles = [];
 
             for (let row = 0; row < rows; row += 1) {
                 for (let column = 0; column < columns; column += 1) {
@@ -71,6 +81,18 @@ function GameEditor() {
 
             setTiles(extractedTiles);
             setSelectedTileId((previous) => (previous < extractedTiles.length ? previous : 0));
+        
+            for (let vehicle in playerVehicles)
+            {
+                const canvas = document.createElement('canvas');
+                    canvas.width = TILE_SIZE;
+                    canvas.height = TILE_SIZE;
+
+                    const context = canvas.getContext('2d');
+                    if (!context) {
+                        continue;
+                    }
+            }
         };
 
         source.onerror = () => {
@@ -83,7 +105,6 @@ function GameEditor() {
             cancelled = true;
         };
     }, []);
-
     
     useEffect(() => {
         if (!gameRef.current) {

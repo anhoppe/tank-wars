@@ -9,9 +9,8 @@ pub struct VehicleDto {
     pub id: String,
     pub player_id: String,
     pub blueprint_id: String,
-    pub image_url: String,
+    pub game_image_url: String,
     pub name: String,
-    pub created_at: Option<String>,
 }
 
 pub async fn vehicle_db_to_dto(pool: &sqlx::PgPool, vehicle_db: VehicleDb) -> VehicleDto {
@@ -44,7 +43,7 @@ pub async fn vehicle_db_to_dto(pool: &sqlx::PgPool, vehicle_db: VehicleDb) -> Ve
         id: vehicle_db.id.to_string(),
         player_id: vehicle_db.player_id.to_string(),
         blueprint_id: vehicle_db.blueprint_id.to_string(),
-        image_url: blueprint_component.image_url,
-        created_at: vehicle_db.created_at.map(|dt| dt.to_rfc3339()),
+        game_image_url: blueprint_component.game_image_url,
+        name: "".to_string(),
     }
 }

@@ -3,6 +3,10 @@
   - docker compose -f docker-compose.yaml up -d
 - Setup db: 
   - **sqlx migrate run** / **sqlx migrate revert**
+- Seed DB
+  - cargo run seed
+- Run backend
+  - cargo run serve
 - Run FE
   - Navigate to src/frontend/tank-wars/
   - npm start

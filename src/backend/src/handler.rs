@@ -57,7 +57,7 @@ pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint"}))))?;
     
-    create_blueprint_component(&data.db, blueprint.id, component_definition_id, chassis.kind, chassis.image_url)
+    create_blueprint_component(&data.db, blueprint.id, component_definition_id, chassis.kind, chassis.game_image_url, chassis.menu_image_url)
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint component"}))))?;
 

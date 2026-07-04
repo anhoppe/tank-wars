@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS component_definition (
     id UUID PRIMARY KEY NOT NULL,
     kind TEXT NOT NULL,
     name TEXT NOT NULL,
-    image_url TEXT NOT NULL,
+    game_image_url TEXT NOT NULL,
+    menu_image_url TEXT NOT NULL,
     price INT NOT NULL,
 
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -48,7 +49,8 @@ CREATE TABLE IF NOT EXISTS blueprint_component (
     component_definition_id UUID NOT NULL REFERENCES component_definition(id),
 
     kind TEXT NOT NULL,
-    image_url TEXT NOT NULL,
+    game_image_url TEXT NOT NULL,
+    menu_image_url TEXT NOT NULL,
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

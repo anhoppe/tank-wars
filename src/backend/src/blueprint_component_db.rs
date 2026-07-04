@@ -8,7 +8,8 @@ pub struct BlueprintComponentDb {
     pub component_definition_id: Uuid,
 
     pub kind: String,
-    pub image_url: String,
+    pub game_image_url: String,
+    pub menu_image_url: String,
     
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -18,19 +19,21 @@ pub async fn create_blueprint_component(
     blueprint_id: Uuid,
     component_definition_id: Uuid,
     kind: String,
-    image_url: String,
+    game_image_url: String,
+    menu_image_url: String,
 ) -> Result<BlueprintComponentDb, sqlx::Error> {
     let blueprint_component = sqlx::query_as!(
         BlueprintComponentDb,
         r#"
-        INSERT INTO blueprint_component (id, blueprint_id, component_definition_id, kind, image_url)
-        VALUES (gen_random_uuid(), $1, $2, $3, $4)
-        RETURNING id, blueprint_id, component_definition_id, kind, image_url, created_at
+        INSERT INTO blueprint_component (id, blueprint_id, component_definition_id, kind, game_image_url, menu_image_url)
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+        RETURNING id, blueprint_id, component_definition_id, kind, game_image_url, menu_image_url, created_at
         "#,
         blueprint_id,
         component_definition_id,
         kind,
-        image_url
+        game_image_url,
+        menu_image_url
     )
     .fetch_one(pool)
     .await?;

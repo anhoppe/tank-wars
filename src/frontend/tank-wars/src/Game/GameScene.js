@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import tilemapImage from '../assets/tiles/tilemap.png';
-import playerBaseImage from '../assets/player/base.png';
+//import playerBaseImage from '../assets/player/base.png';
 import playerTurretImage from '../assets/player/turret.png';
 
 export default class GameScene extends Phaser.Scene {
@@ -17,9 +17,10 @@ export default class GameScene extends Phaser.Scene {
     {
         this.load.image('tilemap', tilemapImage);
 
+        player = this.registry.get('player');
         vehicle = this.registry.get('vehicle');
-        this.load.image('player-base', playerBaseImage);
-        this.load.image('player-turret', playerTurretImage);
+
+        this.load.image('player-base', vehicle.game_image_url);
     }
 
     create()
@@ -51,10 +52,10 @@ export default class GameScene extends Phaser.Scene {
         // Setup Player
         this.playerSpriteGroup = this.physics.add.group();
         this.playerBase = this.playerSpriteGroup.create(100, 100, 'player-base')
-        this.playerTurret = this.playerSpriteGroup.create(100, 100, 'player-turret')
+        //this.playerTurret = this.playerSpriteGroup.create(100, 100, 'player-turret')
 
         this.playerBase.setCollideWorldBounds(true)
-        this.playerTurret.setCollideWorldBounds(true)
+        //this.playerTurret.setCollideWorldBounds(true)
 
         // Keyboard control
         this.aKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
@@ -105,8 +106,8 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // Rotate turret to face mouse pointer
-        var angleRad = this.getTurretAngleRad()
-        this.playerTurret.setRotation(angleRad)
+        // var angleRad = this.getTurretAngleRad()
+        // this.playerTurret.setRotation(angleRad)
 
         // Move player in direction of base angle
         const velocityX = -Math.cos(this.playerBase.angle / 180 * Math.PI) * velocity;
