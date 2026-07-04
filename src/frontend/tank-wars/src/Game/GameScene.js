@@ -1,12 +1,19 @@
 import Phaser from 'phaser';
 import tilemapImage from '../assets/tiles/tilemap.png';
-//import playerBaseImage from '../assets/player/base.png';
-import playerTurretImage from '../assets/player/turret.png';
+import playerBaseImage from '../assets/player/base.png';
+import playerTruckImage from '../assets/player/truck.png';
+
+const PLAYER_BASE_IMAGE_BY_PATH = {
+    'player/base.png': playerBaseImage,
+    'player/truck.png': playerTruckImage,
+};
 
 export default class GameScene extends Phaser.Scene {
     controls;
+    player;
     playerBase;
     playerTurret;
+    vehicle;
     aKey;
     dKey;
     wKey;
@@ -17,10 +24,17 @@ export default class GameScene extends Phaser.Scene {
     {
         this.load.image('tilemap', tilemapImage);
 
-        player = this.registry.get('player');
-        vehicle = this.registry.get('vehicle');
+        this.player = this.registry.get('player');
+        this.vehicle = this.registry.get('vehicle');
 
-        this.load.image('player-base', vehicle.game_image_url);
+        const requestedImagePath = this.vehicle?.game_image_url;
+        const resolvedPlayerBaseImage = PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath] || playerBaseImage;
+
+        if (!PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath]) {
+            console.warn('Unknown player base image, falling back to default:', requestedImagePath);
+        }
+
+        this.load.image('player-base', resolvedPlayerBaseImage);
     }
 
     create()

@@ -5,8 +5,7 @@ import Phaser from 'phaser';
 import GameEditorScene from './GameEditorScene';
 import tilemapImage from './assets/tiles/tilemap.png';
 
-import { getEnemies, getFleetOfPlayer, getMapData } from '../api';
-import { getFleetOfPlayer, putMapDataOfPlayer } from './api';
+import { getEnemies, getFleetOfPlayer, getMapData, putMapDataOfPlayer } from './api';
 
 const TILE_SIZE = 64;
 
@@ -33,7 +32,7 @@ function GameEditor() {
         getFleetOfPlayer(player.id).then(setPlayerVehicles);
 
         for (let vehicle in playerVehicles) {
-            let image = 
+            let image = vehicle.game_image_url;
         }
 
         source.onload = () => {

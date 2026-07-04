@@ -94,7 +94,7 @@ function ResearchBlueprints() {
                             >
                                 <span style={{ fontWeight: 'bold' }}>{type.name}</span>
                                 <img
-                                    src={require(`./assets/${type.image_url}`)}
+                                    src={require(`./assets/${type.menu_image_url}`)}
                                     alt={type.name}
                                     style={{ width: 64, height: 64, objectFit: 'contain', margin: '4px 0' }}
                                 />

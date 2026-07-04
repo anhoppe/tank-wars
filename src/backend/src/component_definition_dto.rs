@@ -20,7 +20,7 @@ impl From<ComponentDefinitionDb> for ComponentDefinitionDto {
             kind: component_db.kind,
             name: component_db.name,
             game_image_url: component_db.game_image_url,
-            game_image_url: component_db.menu_image_url,
+            menu_image_url: component_db.menu_image_url,
             price: component_db.price,
         }
     }
