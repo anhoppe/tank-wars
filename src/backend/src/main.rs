@@ -15,6 +15,8 @@ mod seed;
 mod server;
 mod vehicle_db;
 mod vehicle_dto;
+mod vehicle_on_map_db;
+mod vehicle_on_map_dto;
 
 use server::serve;
 use crate::seed::seed_database;

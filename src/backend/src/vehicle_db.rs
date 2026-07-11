@@ -28,6 +28,23 @@ pub async fn create_vehicle(
     .await
 }
 
+pub async fn get_vehicle_by_id(
+    pool: &sqlx::PgPool,
+    vehicle_id: Uuid,
+) -> Result<Option<VehicleDb>, sqlx::Error> {
+    sqlx::query_as!(
+        VehicleDb,
+        r#"
+        SELECT *
+        FROM vehicle
+        WHERE id = $1
+        "#,
+        vehicle_id
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn get_vehicles_of_player(
     pool: &sqlx::PgPool,
     player_id: Uuid,

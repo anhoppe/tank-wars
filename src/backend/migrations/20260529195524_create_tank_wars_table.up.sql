@@ -63,3 +63,15 @@ CREATE TABLE IF NOT EXISTS vehicle (
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS vehicle_on_map (
+    id UUID PRIMARY KEY NOT NULL,
+  
+    player_id UUID NOT NULL REFERENCES player(id),
+    vehicle_id UUID NOT NULL REFERENCES vehicle(id),
+
+    x INT NOT NULL,
+    y INT NOT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);

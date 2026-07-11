@@ -1,55 +1,37 @@
 import Phaser from 'phaser';
 import tilemapImage from './assets/tiles/tilemap.png';
 import cursorImage from './assets/cursor.png';
+import { getVehiclesOnMap, placeVehicleOnMap } from './api';
+import playerBaseImage from './assets/player/base.png';
+import playerTruckImage from './assets/player/truck.png';
+
+const PLAYER_BASE_IMAGE_BY_PATH = {
+    'player/tank.png': playerBaseImage,
+    'player/truck.png': playerTruckImage,
+};
 
 export default class GameEditorScene extends Phaser.Scene
 {
     controls;
+    groundLayer;
+    playerId;
+    vehicleLayer;
+    vehiclesOnMap;
 
     preload ()
     {
         this.load.image('tilemap', tilemapImage);
         this.load.image('cursor', cursorImage);
+        this.load.image('player/tank.png', playerBaseImage);
+        this.load.image('player/truck.png', playerTruckImage);
     }
 
-    create ()
+    async create ()
     {
+        // Map / tile loading
         const player_map = this.registry.get('map');
-        
-        // Load a blank map with a 32 x 32 px tile size. This is the base tile size. This means that
-        // tiles in the map will be placed on a 64 x 64 px grid.
-        const map = this.make.tilemap({ width: player_map.width, height: player_map.height, tileWidth: 64, tileHeight: 64 });
 
-        // You can also change the base tile size of map like this:
-        // map.setBaseTileSize(32, 32);
-
-        // The current tileset image is 64 x 128, which means two 64 x 64 tiles stacked vertically.
-        const tiles = map.addTilesetImage('tilemap', null, 64, 64);
-
-        // Create a layer and populate it from saved map_data (2D array of tile indices)
-        this.layer = map.createBlankLayer('layer1', tiles);
-        const layer = this.layer;
-
-        const mapData = JSON.parse(player_map.map_data);
-        if (Array.isArray(mapData)) {
-            mapData.forEach((row, y) => {
-                row.forEach((tileIndex, x) => {
-                    layer.putTileAt(tileIndex, x, y);
-                });
-            });
-        }
-
-        //  Create a little 32x32 texture to use to show where the mouse is
-        const graphics = this.make.graphics({ x: 0, y: 0, add: false, fillStyle: { color: 0xff00ff, alpha: 1 } });
-
-        graphics.fillRect(0, 0, 64, 64);
-
-        graphics.generateTexture('cursor', 64, 64);
-
-        const highlighted = this.add.image(0, 0, 'cursor').setOrigin(0, 0);
-
-        const hitArea = new Phaser.Geom.Rectangle(0, 0, 64, 64);
-        const hitAreaCallback = Phaser.Geom.Rectangle.Contains;
+        this.playerId = this.registry.get('playerId');
 
         const cursorKeys = this.input.keyboard.createCursorKeys();
 
@@ -63,6 +45,55 @@ export default class GameEditorScene extends Phaser.Scene
         };
 
         this.controls = new Phaser.Cameras.Controls.FixedKeyControl(controlConfig);
+        
+        // Load a blank map with a 32 x 32 px tile size. This is the base tile size. This means that
+        // tiles in the map will be placed on a 64 x 64 px grid.
+        const map = this.make.tilemap({ width: player_map.width, height: player_map.height, tileWidth: 64, tileHeight: 64 });
+
+        // You can also change the base tile size of map like this:
+        // map.setBaseTileSize(32, 32);
+
+        // The current tileset image is 64 x 128, which means two 64 x 64 tiles stacked vertically.
+        const tiles = map.addTilesetImage('tilemap', null, 64, 64);
+
+        // Create a layer and populate it from saved map_data (2D array of tile indices)
+        this.groundLayer = map.createBlankLayer('layer1', tiles);
+
+        const mapData = JSON.parse(player_map.map_data);
+        if (Array.isArray(mapData)) {
+            mapData.forEach((row, y) => {
+                row.forEach((tileIndex, x) => {
+                    this.groundLayer.putTileAt(tileIndex, x, y);
+                });
+            });
+        }
+
+        // Load vehicles on the map
+        this.vehiclesOnMap = await getVehiclesOnMap(this.playerId);
+        this.vehicleLayer = this.add.layer();
+        for (const vehicle of this.vehiclesOnMap) {
+            const requestedImagePath = vehicle?.game_image_url;
+            const resolvedPlayerBaseImage = PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath] || playerBaseImage;
+
+            if (!PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath]) {
+                console.warn('Unknown player base image, falling back to default:', requestedImagePath);
+            }
+            const vehicleImage = this.add.image(vehicle.x * 64 + 32, vehicle.y * 64 + 32, resolvedPlayerBaseImage);
+            vehicleImage.setOrigin(0.5, 0.5);
+            this.vehicleLayer.add(vehicleImage);
+        }
+
+        //  Create a little 32x32 texture to use to show where the mouse is
+        const graphics = this.make.graphics({ x: 0, y: 0, add: false, fillStyle: { color: 0xff00ff, alpha: 1 } });
+
+        graphics.fillRect(0, 0, 64, 64);
+
+        graphics.generateTexture('cursor', 64, 64);
+
+        const highlighted = this.add.image(0, 0, 'cursor').setOrigin(0, 0);
+
+        const hitArea = new Phaser.Geom.Rectangle(0, 0, 64, 64);
+        const hitAreaCallback = Phaser.Geom.Rectangle.Contains;
 
         const hitZoneGroup = this.add.group();
 
@@ -84,9 +115,25 @@ export default class GameEditorScene extends Phaser.Scene
 
         this.input.on('pointerdown', function (pointer) {
             const selectedTileId = this.registry.get('selectedTileId');
-            const tileIndex = Number.isInteger(selectedTileId) ? selectedTileId : 0;
+            const selectedVehicleId = this.registry.get('selectedVehicleId');
 
-            layer.putTileAt(tileIndex, Math.floor(pointer.worldX / 64), Math.floor(pointer.worldY / 64));
+            if (selectedTileId !== -1) {
+                this.groundLayer.putTileAt(selectedTileId, Math.floor(pointer.worldX / 64), Math.floor(pointer.worldY / 64));
+            }
+            else if (selectedVehicleId !== -1) {
+                const x = Math.floor(pointer.worldX / 64);
+                const y = Math.floor(pointer.worldY / 64);
+
+                placeVehicleOnMap(this.playerId, selectedVehicleId, x, y)
+                    .then(() => {
+                        const vehicleImage = this.add.image(x * 64 + 32, y * 64 + 32, 'vehicle');
+                        vehicleImage.setOrigin(0.5, 0.5);
+                        this.vehicleLayer.add(vehicleImage);
+                    })
+                    .catch((error) => {
+                        console.error('Failed to place vehicle on map:', error);
+                    });
+            }
         }, this);
 
         const help = this.add.text(16, 16, 'Arrows to scroll', {
@@ -100,11 +147,11 @@ export default class GameEditorScene extends Phaser.Scene
     }
 
     getMapData() {
-        const width = this.layer.layer.width;
-        const height = this.layer.layer.height;
+        const width = this.groundLayer.layer.width;
+        const height = this.groundLayer.layer.height;
         const result = Array.from({ length: height }, (_, y) =>
             Array.from({ length: width }, (_, x) => {
-                const tile = this.layer.getTileAt(x, y);
+                const tile = this.groundLayer.getTileAt(x, y);
                 return tile ? tile.index : 0;
             })
         );
@@ -113,6 +160,8 @@ export default class GameEditorScene extends Phaser.Scene
 
     update (time, delta)
     {
-        this.controls.update(delta);
+        if (this.controls) {
+            this.controls.update(delta);
+        }
     }
 }

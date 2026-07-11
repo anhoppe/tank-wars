@@ -15,14 +15,15 @@ function GameEditor() {
 
     const [playerVehicles, setPlayerVehicles] = useState([]);
     const [selectedTileId, setSelectedTileId] = useState(0);
+    const [selectedVehicleId, setSelectedVehicleId] = useState(null);
     const [tiles, setTiles] = useState([]);
 
     const { state } = useLocation();
     const map = state?.map;
     const player = state?.player;
-    const playerVehicleImages = [];
     const navigate = useNavigate();
 
+    // Load tile images from the tilemap image
     useEffect(() => {
         let cancelled = false;
 
@@ -30,10 +31,6 @@ function GameEditor() {
         source.src = tilemapImage;
 
         getFleetOfPlayer(player.id).then(setPlayerVehicles);
-
-        for (let vehicle in playerVehicles) {
-            let image = vehicle.game_image_url;
-        }
 
         source.onload = () => {
             if (cancelled) {
@@ -80,18 +77,6 @@ function GameEditor() {
 
             setTiles(extractedTiles);
             setSelectedTileId((previous) => (previous < extractedTiles.length ? previous : 0));
-        
-            for (let vehicle in playerVehicles)
-            {
-                const canvas = document.createElement('canvas');
-                    canvas.width = TILE_SIZE;
-                    canvas.height = TILE_SIZE;
-
-                    const context = canvas.getContext('2d');
-                    if (!context) {
-                        continue;
-                    }
-            }
         };
 
         source.onerror = () => {
@@ -111,9 +96,17 @@ function GameEditor() {
         }
 
         gameRef.current.registry.set('selectedTileId', Number(selectedTileId));
-        gameRef.current.registry.set('map', map);
     }, [selectedTileId]);
 
+    useEffect(() => {
+        if (!gameRef.current) {
+            return;
+        }
+
+        gameRef.current.registry.set('selectedVehicleId', selectedVehicleId);
+    }, [selectedVehicleId]);
+
+    // Initialize Phaser game when the component mounts
     useEffect(() => {
         if (!gameContainerRef.current) {
             return undefined;
@@ -131,6 +124,7 @@ function GameEditor() {
         gameRef.current = game;
         gameRef.current.registry.set('selectedTileId', Number(selectedTileId));
         gameRef.current.registry.set('map', map);
+        gameRef.current.registry.set('playerId', player?.id);
         
         return () => {
             gameRef.current = null;
@@ -169,7 +163,10 @@ function GameEditor() {
                                 key={tile.id}
                                 type="button"
                                 className={`tile-button${selectedTileId === tile.id ? ' tile-button-selected' : ''}`}
-                                onClick={() => setSelectedTileId(tile.id)}
+                                onClick={() => {
+                                    setSelectedTileId(tile.id); 
+                                    setSelectedVehicleId(-1);
+                                }}
                             >
                                 <img src={tile.src} alt={tile.name} className="tile-image" />
                                 <span className="tile-name">{tile.name}</span>
@@ -180,6 +177,24 @@ function GameEditor() {
                         <button onClick={handleSaveMap}>Save Map</button>
                         <button onClick={handleExit}>Exit</button>
                     </div>
+                    <h2 className="tile-section-title">Vehicles</h2>
+                    <div className="tile-grid">
+                        {playerVehicles.map((vehicle) => (
+                            <button
+                                key={vehicle.id}
+                                type="button"
+                                className={`tile-button${selectedVehicleId === vehicle.id ? ' tile-button-selected' : ''}`}
+                                onClick={() => {
+                                    setSelectedVehicleId(vehicle.id);
+                                    setSelectedTileId(-1);
+                                }}
+                            >
+                                <img src={require(`./assets/${vehicle.game_image_url}`)} alt={vehicle.name} className="tile-image" />
+                                <span className="tile-name">{vehicle.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
                 </section>
             </aside>
         </div>

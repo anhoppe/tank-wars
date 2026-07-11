@@ -36,3 +36,18 @@ pub async fn insert_map(
     .fetch_one(pool)
     .await
 }
+
+pub async fn set_map_data(
+    pool: &sqlx::PgPool,
+    player_id: Uuid,
+    map_data: String,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"UPDATE map SET map_data = $1 WHERE player_id = $2"#,
+        map_data,
+        player_id,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}

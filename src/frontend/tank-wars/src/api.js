@@ -69,7 +69,15 @@ export async function getOrCreatePlayer(name) {
   return response.json();
 }
 
-export async function getVehicelTypes() {
+export async function getVehiclesOnMap(playerId) {
+    const response = await fetch(`${BASE_URL}/map/${playerId}/vehicles`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch vehicles on map for player ${playerId}`);
+    }
+    return await response.json();
+}
+
+export async function getVehicleTypes() {
     const response = await fetch(`${BASE_URL}/vehicle-types`);
     if (!response.ok) {
         throw new Error(`Failed to fetch vehicle types: ${response.status}`);
@@ -83,5 +91,19 @@ export async function putMapDataOfPlayer(playerId, mapData) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mapData }),
     });
-    console.log('Save map response:', response.status);
+    if (!response.ok) {
+        throw new Error(`Failed to save map data for player ${playerId}`);
+    }
+}
+
+export async function placeVehicleOnMap(playerId, vehicleId, x, y) {
+    const response = await fetch(`${BASE_URL}/map/${playerId}/vehicles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleId: vehicleId, x: x, y: y }),
+
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to place vehicle on map for player ${playerId}`);
+    }
 }

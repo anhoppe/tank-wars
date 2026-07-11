@@ -13,7 +13,7 @@ use crate::{AppState,
     player_db::{PlayerDb, get_player_by_id, insert_player, update_player}, 
     player_dto::PlayerDto, 
     map_dto::MapDto, 
-    map_db::{MapDb, insert_map},
+    map_db::{MapDb, insert_map, set_map_data},
     vehicle_db::{create_vehicle},
     vehicle_dto::vehicle_db_to_dto,
 };
@@ -258,6 +258,30 @@ pub async fn get_enemies(State(data): State<Arc<AppState>>,
     }
 }
 
+pub async fn get_vehicles_on_map(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for vehicles on map of player_id: {}", player_id);
+
+    let vehicles_on_map_lookup = crate::vehicle_on_map_db::get_vehicles_on_map(&data.db, player_id).await;
+
+    match vehicles_on_map_lookup {
+        Ok(vehicles_on_map) => {
+            let mut vehicle_dtos = Vec::with_capacity(vehicles_on_map.len());
+            for vehicle_on_map in vehicles_on_map {
+                let vehicle_dto = crate::vehicle_on_map_dto::vehicle_on_map_db_to_dto(&data.db, vehicle_on_map).await;
+                vehicle_dtos.push(vehicle_dto);
+            }
+            Ok(Json(json!(vehicle_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query vehicles on map: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query vehicles on map"}))))
+        }
+    }
+}
+
 pub async fn get_vehicle_types(State(data): State<Arc<AppState>>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
@@ -277,6 +301,45 @@ pub async fn get_vehicle_types(State(data): State<Arc<AppState>>)
     }
 }
 
+pub async fn place_vehicle_on_map(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>,
+    Json(body): Json<serde_json::Value>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    let vehicle_id = match body["vehicleId"].as_str() {
+        Some(s) => match uuid::Uuid::parse_str(s) {
+            Ok(id) => id,
+            Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Invalid vehicleId format"})))),
+        }
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing vehicleId field"})))),
+    };
+
+    let x = match body["x"].as_i64() {
+        Some(x) => x as i32,
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing or invalid x field"})))),
+    };
+
+    let y = match body["y"].as_i64() {
+        Some(y) => y as i32,
+        None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing or invalid y field"})))),
+    };
+
+    println!("Received request to place vehicle on map for player_id: {}, vehicle_id: {}, x: {}, y: {}", player_id, vehicle_id, x, y);
+
+    let placed_vehicle = crate::vehicle_on_map_db::place_vehicle_on_map(&data.db, player_id, vehicle_id, x, y).await;
+
+    match placed_vehicle {
+        Ok(vehicle_on_map) => {
+            let vehicle_dto = crate::vehicle_on_map_dto::vehicle_on_map_db_to_dto(&data.db, vehicle_on_map).await;
+            Ok(Json(json!(vehicle_dto)))
+        }
+        Err(err) => {
+            eprintln!("Failed to place vehicle on map: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to place vehicle on map"}))))
+        }
+    }
+}
+
 pub async fn set_player_map(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>,
     Json(body): Json<serde_json::Value>)
@@ -289,13 +352,7 @@ pub async fn set_player_map(State(data): State<Arc<AppState>>,
         None => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing mapData field"})))),
     };
 
-    let update_result = sqlx::query!(
-        r#"UPDATE map SET map_data = $1 WHERE player_id = $2"#,
-        map_data,
-        player_id,
-    )
-    .execute(&data.db)
-    .await;
+    let update_result = set_map_data(&data.db, player_id, map_data).await;
 
     match update_result {
         Ok(_) => Ok(StatusCode::OK),

@@ -1,5 +1,5 @@
 -- Add down migration script here
-
+DROP TABLE IF EXISTS vehicle_on_map;
 DROP TABLE IF EXISTS vehicle;
 DROP TABLE IF EXISTS blueprint_component;
 DROP TABLE IF EXISTS blueprint;

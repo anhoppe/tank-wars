@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {useNavigate, useLocation} from 'react-router-dom';
 
-import { getBlueprintsOfPlayer, getVehicelTypes, buyBlueprintForPlayer} from './api';
+import { getBlueprintsOfPlayer, getVehicleTypes, buyBlueprintForPlayer} from './api';
 
 
 function ResearchBlueprints() {
@@ -12,8 +12,8 @@ function ResearchBlueprints() {
     const [blueprints, setBlueprints] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(initialPlayer);
     const [selectedId, setSelectedId] = useState('');
-    const [showVehicelTypes, setShowVehicelTypes] = useState(false);
-    const [vehicelTypes, setVehicleTypes] = useState([]);
+    const [showVehicleTypes, setShowVehicleTypes] = useState(false);
+    const [vehicleTypes, setVehicleTypes] = useState([]);
 
     useEffect(() => {
         if (!currentPlayer) {
@@ -23,7 +23,7 @@ function ResearchBlueprints() {
         const load = async () => {
             try {
                 setPlayerBlueprints();
-                setVehicleTypes(await getVehicelTypes());
+                setVehicleTypes(await getVehicleTypes());
             } catch {
                 setBlueprints([]);
             }
@@ -66,18 +66,18 @@ function ResearchBlueprints() {
                 </select>
                 <div style={{ marginTop: 3 }}>
                     <button onClick={() => {
-                        setShowVehicelTypes(!showVehicelTypes)
+                        setShowVehicleTypes(!showVehicleTypes)
                     }}>Buy</button>
                 </div>
                 <div style={{ marginTop: 10 }}>
                     <button onClick={() => navigate('/main', { state: { player: currentPlayer } })}>Back</button>
                 </div>
             </div>
-            {showVehicelTypes && (
+            {showVehicleTypes && (
                 <div style={{ marginLeft: 20, minWidth: 200, borderLeft: '1px solid #ccc', paddingLeft: 10 }}>
                     <h3>Vehicle Types</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {vehicelTypes.map((type) => (
+                        {vehicleTypes.map((type) => (
                             <div
                                 key={type.id}
                                 onClick={() => buyBlueprint(type.id, type.price)}

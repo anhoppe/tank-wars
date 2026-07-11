@@ -13,7 +13,9 @@ use crate::{
         set_player_map, 
         get_or_create_player, 
         get_vehicle_types,
-        get_vehicles_of_player}
+        get_vehicles_of_player,
+        get_vehicles_on_map,
+        place_vehicle_on_map},
 };
 
 pub async fn serve(pool: &PgPool) {
@@ -28,6 +30,8 @@ pub async fn serve(pool: &PgPool) {
         .route("/api/blueprints/{player_id}", axum::routing::get(get_blueprints_of_player).post(buy_blueprint_for_player))
         .route("/api/fleet/{player_id}", axum::routing::get(get_vehicles_of_player).post(buy_vehicle_for_player))
         .route("/api/map/{player_id}", axum::routing::get(get_player_map).put(set_player_map))
+        .route("/api/map/{player_id}/vehicles", axum::routing::get(get_vehicles_on_map))
+        .route("/api/map/{player_id}/vehicles", axum::routing::post(place_vehicle_on_map))
         .route("/api/player", axum::routing::post(get_or_create_player))
         .route("/api/vehicle-types", axum::routing::get(get_vehicle_types))
         .layer(cors)
