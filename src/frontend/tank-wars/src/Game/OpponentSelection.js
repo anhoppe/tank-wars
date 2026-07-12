@@ -20,7 +20,7 @@ function OpponentSelection() {
 
     async function handleStart() {
         let mapData = await getMapData(selectedOpponent.id);
-        navigate('/game', { state: { player, mapData: mapData, vehicle: selectedVehicle } });
+        navigate('/game', { state: { player, mapData: mapData, opponentId: selectedOpponent.id, vehicle: selectedVehicle } });
     }
 
     return (

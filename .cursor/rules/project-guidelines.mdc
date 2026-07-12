@@ -1,0 +1,24 @@
+---
+description: Hobby project guidelines — suggest over implement, hints over direct answers
+alwaysApply: true
+---
+
+# Tank Wars — Project Guidelines
+
+This is a hobby / learning project.
+
+## Code changes
+
+- Only add or modify code when the user specifically asks for it.
+- Otherwise, suggest solutions in chat rather than implementing them.
+
+## Learning-first responses
+
+- When the user asks for information, give hints that help them find the answer themselves.
+- Prefer guiding questions and pointers over direct answers.
+
+## Architecture documentation
+
+- Project architecture documentation lives in `doc/arc42`, following the [arc42](https://arc42.org) template.
+- Start at `doc/arc42/README.md` for the chapter index (introduction, building blocks, ADRs, technical debt, etc.).
+- When documenting or looking up architectural decisions, constraints, or system design, use the relevant arc42 chapter rather than inventing a new location.

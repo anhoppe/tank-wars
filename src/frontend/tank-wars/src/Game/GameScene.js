@@ -1,15 +1,14 @@
 import Phaser from 'phaser';
+import { getVehiclesOnMap } from '../api';
 import tilemapImage from '../assets/tiles/tilemap.png';
 import playerBaseImage from '../assets/player/base.png';
 import playerTruckImage from '../assets/player/truck.png';
 
-const PLAYER_BASE_IMAGE_BY_PATH = {
-    'player/base.png': playerBaseImage,
-    'player/truck.png': playerTruckImage,
-};
 
 export default class GameScene extends Phaser.Scene {
     controls;
+    enemies;
+    opponentId;
     player;
     playerBase;
     playerTurret;
@@ -23,18 +22,14 @@ export default class GameScene extends Phaser.Scene {
     preload()
     {
         this.load.image('tilemap', tilemapImage);
-
+        this.opponentId = this.registry.get('opponentId');
         this.player = this.registry.get('player');
         this.vehicle = this.registry.get('vehicle');
 
         const requestedImagePath = this.vehicle?.game_image_url;
-        const resolvedPlayerBaseImage = PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath] || playerBaseImage;
 
-        if (!PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath]) {
-            console.warn('Unknown player base image, falling back to default:', requestedImagePath);
-        }
-
-        this.load.image('player-base', resolvedPlayerBaseImage);
+        this.load.image('player/base.png', playerBaseImage);
+        this.load.image('player/truck.png', playerTruckImage);
     }
 
     create()
@@ -65,10 +60,10 @@ export default class GameScene extends Phaser.Scene {
 
         // Setup Player
         this.playerSpriteGroup = this.physics.add.group();
-        this.playerBase = this.playerSpriteGroup.create(100, 100, 'player-base')
+        this.playerBase = this.playerSpriteGroup.create(100, 100, 'player/base.png');
         //this.playerTurret = this.playerSpriteGroup.create(100, 100, 'player-turret')
 
-        this.playerBase.setCollideWorldBounds(true)
+        this.playerBase.setCollideWorldBounds(true);
         //this.playerTurret.setCollideWorldBounds(true)
 
         // Keyboard control
@@ -77,6 +72,24 @@ export default class GameScene extends Phaser.Scene {
         this.wKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.sKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+        // Setup Enemy Vehicles without blocking scene startup.
+        this.enemies = [];
+        this.enemySpriteGroups = [];
+        getVehiclesOnMap(this.opponentId)
+            .then((enemies) => {
+                for (const enemy of enemies) {
+                    const requestedImagePath = enemy?.game_image_url;
+                    const enemySpriteGroup = this.physics.add.group();
+                    this.enemySpriteGroups.push(enemySpriteGroup);
+                    const enemySprite = enemySpriteGroup.create(enemy.x * 64 + 32, enemy.y * 64 + 32, requestedImagePath);
+                    enemySprite.setCollideWorldBounds(true);
+                    this.enemies.push(enemySprite);
+                }
+            })
+            .catch((error) => {
+                console.error('Failed to load enemy vehicles:', error);
+            });
 
         // Mouse control
         // Hide mouse pointer
@@ -92,6 +105,10 @@ export default class GameScene extends Phaser.Scene {
 
     update (time, delta)
     {
+        if (!this.aKey || !this.dKey || !this.wKey || !this.sKey || !this.escKey || !this.playerBase) {
+            return;
+        }
+
         // Evaluate keybpoard input
         if (this.aKey.isDown)
         {

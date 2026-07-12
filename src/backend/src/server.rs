@@ -12,6 +12,8 @@ use crate::{
         get_player_map, 
         set_player_map, 
         get_or_create_player, 
+        get_unused_vehicles_of_player,
+        get_vehicle_by_id,
         get_vehicle_types,
         get_vehicles_of_player,
         get_vehicles_on_map,
@@ -31,8 +33,10 @@ pub async fn serve(pool: &PgPool) {
         .route("/api/fleet/{player_id}", axum::routing::get(get_vehicles_of_player).post(buy_vehicle_for_player))
         .route("/api/map/{player_id}", axum::routing::get(get_player_map).put(set_player_map))
         .route("/api/map/{player_id}/vehicles", axum::routing::get(get_vehicles_on_map))
+        .route("/api/map/{player_id}/vehicles/unused", axum::routing::get(get_unused_vehicles_of_player))
         .route("/api/map/{player_id}/vehicles", axum::routing::post(place_vehicle_on_map))
         .route("/api/player", axum::routing::post(get_or_create_player))
+        .route("/api/vehicle/{vehicle_id}", axum::routing::get(get_vehicle_by_id))
         .route("/api/vehicle-types", axum::routing::get(get_vehicle_types))
         .layer(cors)
         .with_state(Arc::new(AppState { db: pool.clone() }));

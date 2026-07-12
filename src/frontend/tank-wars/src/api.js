@@ -69,6 +69,22 @@ export async function getOrCreatePlayer(name) {
   return response.json();
 }
 
+export async function getVehicleById(vehicleId) {
+    const response = await fetch(`${BASE_URL}/vehicle/${vehicleId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch vehicle with ID ${vehicleId}`);
+    }
+    return await response.json();
+}
+
+export async function getUnusedVehiclesOfPlayer(playerId) {
+    const response = await fetch(`${BASE_URL}/map/${playerId}/vehicles/unused`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch unused vehicles for player ${playerId}`);
+    }
+    return await response.json();
+}
+
 export async function getVehiclesOnMap(playerId) {
     const response = await fetch(`${BASE_URL}/map/${playerId}/vehicles`);
     if (!response.ok) {

@@ -61,3 +61,21 @@ pub async fn get_vehicles_of_player(
     .fetch_all(pool)
     .await
 }
+
+pub async fn get_unused_vehicles_of_player(
+    pool: &sqlx::PgPool,
+    player_id: Uuid,
+) -> Result<Vec<VehicleDb>, sqlx::Error> {
+    sqlx::query_as!(
+        VehicleDb,
+        r#"
+        SELECT *
+        FROM vehicle
+        WHERE player_id = $1
+        AND id NOT IN (SELECT vehicle_id FROM vehicle_on_map)
+        "#,
+        player_id
+    )
+    .fetch_all(pool)
+    .await
+}

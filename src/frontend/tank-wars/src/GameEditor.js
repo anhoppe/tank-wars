@@ -5,9 +5,10 @@ import Phaser from 'phaser';
 import GameEditorScene from './GameEditorScene';
 import tilemapImage from './assets/tiles/tilemap.png';
 
-import { getEnemies, getFleetOfPlayer, getMapData, putMapDataOfPlayer } from './api';
+import { getEnemies, getMapData, getUnusedVehiclesOfPlayer, putMapDataOfPlayer } from './api';
 
 const TILE_SIZE = 64;
+const VEHICLE_PLACED_EVENT = 'vehicle-placed-event';
 
 function GameEditor() {
     const gameContainerRef = useRef(null);
@@ -30,7 +31,7 @@ function GameEditor() {
         const source = new Image();
         source.src = tilemapImage;
 
-        getFleetOfPlayer(player.id).then(setPlayerVehicles);
+        getUnusedVehiclesOfPlayer(player.id).then(setPlayerVehicles);
 
         source.onload = () => {
             if (cancelled) {
@@ -125,9 +126,43 @@ function GameEditor() {
         gameRef.current.registry.set('selectedTileId', Number(selectedTileId));
         gameRef.current.registry.set('map', map);
         gameRef.current.registry.set('playerId', player?.id);
+
+        // Register for vehicle placed in the Game EditorScene and update the playerVehicles state when a vehicle is placed
+        const onVehiclePlaced = (placedVehicle) => {
+            console.log('Vehicle placed event received in GameEditor:', placedVehicle);
+            setSelectedVehicleId(-1);
+            setPlayerVehicles((prevVehicles) => prevVehicles.filter((vehicle) => vehicle.id !== placedVehicle.vehicleId));
+        }
+
+        let sceneRef = null;
+        let registered = false;
+
+        function registerVehiclePlacedListener() {
+            if (registered) {
+                return;
+            }
+
+            sceneRef = gameRef.current.scene.scenes[0];
+            if (sceneRef) {
+                sceneRef.events.on(VEHICLE_PLACED_EVENT, onVehiclePlaced);
+                registered = true;
+            }
+        }
+
+        // Call directly in case the scene is already created
+        registerVehiclePlacedListener();
+
+        // Also call when the scene is created
+        gameRef.current.events.on('ready', registerVehiclePlacedListener);
         
         return () => {
-            gameRef.current = null;
+            if (sceneRef) {
+                sceneRef.events.off(VEHICLE_PLACED_EVENT, onVehiclePlaced);
+            }
+            if (gameRef.current) {
+                gameRef.current.events.off('ready', registerVehiclePlacedListener);
+                gameRef.current = null;
+            }
             game.destroy(true);
         };
     }, []);

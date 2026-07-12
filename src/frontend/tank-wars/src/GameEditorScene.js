@@ -1,14 +1,11 @@
 import Phaser from 'phaser';
 import tilemapImage from './assets/tiles/tilemap.png';
 import cursorImage from './assets/cursor.png';
-import { getVehiclesOnMap, placeVehicleOnMap } from './api';
+import { getVehicleById, getVehiclesOnMap, placeVehicleOnMap } from './api';
 import playerBaseImage from './assets/player/base.png';
 import playerTruckImage from './assets/player/truck.png';
 
-const PLAYER_BASE_IMAGE_BY_PATH = {
-    'player/tank.png': playerBaseImage,
-    'player/truck.png': playerTruckImage,
-};
+const VEHICLE_PLACED_EVENT = 'vehicle-placed-event';
 
 export default class GameEditorScene extends Phaser.Scene
 {
@@ -22,7 +19,7 @@ export default class GameEditorScene extends Phaser.Scene
     {
         this.load.image('tilemap', tilemapImage);
         this.load.image('cursor', cursorImage);
-        this.load.image('player/tank.png', playerBaseImage);
+        this.load.image('player/base.png', playerBaseImage);
         this.load.image('player/truck.png', playerTruckImage);
     }
 
@@ -72,13 +69,7 @@ export default class GameEditorScene extends Phaser.Scene
         this.vehiclesOnMap = await getVehiclesOnMap(this.playerId);
         this.vehicleLayer = this.add.layer();
         for (const vehicle of this.vehiclesOnMap) {
-            const requestedImagePath = vehicle?.game_image_url;
-            const resolvedPlayerBaseImage = PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath] || playerBaseImage;
-
-            if (!PLAYER_BASE_IMAGE_BY_PATH[requestedImagePath]) {
-                console.warn('Unknown player base image, falling back to default:', requestedImagePath);
-            }
-            const vehicleImage = this.add.image(vehicle.x * 64 + 32, vehicle.y * 64 + 32, resolvedPlayerBaseImage);
+            const vehicleImage = this.add.image(vehicle.x * 64 + 32, vehicle.y * 64 + 32, vehicle?.game_image_url);
             vehicleImage.setOrigin(0.5, 0.5);
             this.vehicleLayer.add(vehicleImage);
         }
@@ -125,10 +116,12 @@ export default class GameEditorScene extends Phaser.Scene
                 const y = Math.floor(pointer.worldY / 64);
 
                 placeVehicleOnMap(this.playerId, selectedVehicleId, x, y)
-                    .then(() => {
-                        const vehicleImage = this.add.image(x * 64 + 32, y * 64 + 32, 'vehicle');
+                    .then(async () => {
+                        let placedVehicle = await getVehicleById(selectedVehicleId);
+                        const vehicleImage = this.add.image(x * 64 + 32, y * 64 + 32, placedVehicle?.game_image_url);
                         vehicleImage.setOrigin(0.5, 0.5);
                         this.vehicleLayer.add(vehicleImage);
+                        this.events.emit(VEHICLE_PLACED_EVENT, { vehicleId: selectedVehicleId });
                     })
                     .catch((error) => {
                         console.error('Failed to place vehicle on map:', error);

@@ -9,6 +9,7 @@ function Game() {
     const location = useLocation();
     const player = location.state?.player;
     const mapData = location.state?.mapData;
+    const opponentId = location.state?.opponentId;
     const vehicle = location.state?.vehicle;
 
     const gameContainerRef = useRef(null);
@@ -36,6 +37,7 @@ function Game() {
         gameRef.current.registry.set('map', mapData);
         gameRef.current.registry.set('leaveGame', leaveGame);
         gameRef.current.registry.set('vehicle', vehicle);
+        gameRef.current.registry.set('opponentId', opponentId);
         gameRef.current.registry.set('player', player);
 
         return () => {

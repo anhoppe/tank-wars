@@ -258,6 +258,51 @@ pub async fn get_enemies(State(data): State<Arc<AppState>>,
     }
 }
 
+pub async fn get_unused_vehicles_of_player(State(data): State<Arc<AppState>>,
+    Path(player_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for unused vehicles of player_id: {}", player_id);
+
+    let unused_vehicles_lookup = crate::vehicle_db::get_unused_vehicles_of_player(&data.db, player_id).await;
+
+    match unused_vehicles_lookup {
+        Ok(unused_vehicles) => {
+            let mut vehicle_dtos = Vec::with_capacity(unused_vehicles.len());
+            for vehicle in unused_vehicles {
+                let vehicle_dto = crate::vehicle_dto::vehicle_db_to_dto(&data.db, vehicle).await;
+                vehicle_dtos.push(vehicle_dto);
+            }
+            Ok(Json(json!(vehicle_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query unused vehicles: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query unused vehicles"}))))
+        }
+    }
+}
+
+pub async fn get_vehicle_by_id(State(data): State<Arc<AppState>>,
+    Path(vehicle_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for vehicle_id: {}", vehicle_id);
+
+    let vehicle_lookup = crate::vehicle_db::get_vehicle_by_id(&data.db, vehicle_id).await;
+
+    match vehicle_lookup {
+        Ok(Some(vehicle)) => {
+            let vehicle_dto = crate::vehicle_dto::vehicle_db_to_dto(&data.db, vehicle).await;
+            Ok(Json(json!(vehicle_dto)))
+        }
+        Ok(None) => Err((StatusCode::NOT_FOUND, Json(json!({"error": "Vehicle not found"})))),
+        Err(err) => {
+            eprintln!("Failed to query vehicle: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query vehicle"}))))
+        }
+    }
+}
+
 pub async fn get_vehicles_on_map(State(data): State<Arc<AppState>>,
     Path(player_id): Path<uuid::Uuid>)
     -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
