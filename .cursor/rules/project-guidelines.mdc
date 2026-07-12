@@ -22,3 +22,7 @@ This is a hobby / learning project.
 - Project architecture documentation lives in `doc/arc42`, following the [arc42](https://arc42.org) template.
 - Start at `doc/arc42/README.md` for the chapter index (introduction, building blocks, ADRs, technical debt, etc.).
 - When documenting or looking up architectural decisions, constraints, or system design, use the relevant arc42 chapter rather than inventing a new location.
+
+
+## Ticket Documentation
+ - Backlog of tickets is in doc\v1\roadmap.md

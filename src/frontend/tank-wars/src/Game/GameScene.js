@@ -112,12 +112,12 @@ export default class GameScene extends Phaser.Scene {
         // Evaluate keybpoard input
         if (this.aKey.isDown)
         {
-            this.playerBase.angle -= 0.4;
+            this.playerBase.angle -= 0.8;
         }
 
         if (this.dKey.isDown)
         {
-            this.playerBase.angle += 0.4;
+            this.playerBase.angle += 0.8;
         } 
 
         let velocity = 0;

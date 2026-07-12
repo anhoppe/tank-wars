@@ -96,6 +96,28 @@ blueprint ||--o{ vehicle : "instanced as"
 vehicle ||--o{ vehicle_on_map : "positioned as"
 component_definition ||--o{ blueprint_component : "installed as"
 
+note right of component_definition
+  **Global parts catalog**
+  Master list of buyable component types
+  (chassis, turret, weapon, ...).
+  --
+  One row per part type; seeded and shared
+  by all players. The shop reads from here.
+  When a player mounts a part, a row is
+  copied into blueprint_component.
+end note
+
+note left of blueprint_component
+  **Installed parts on a blueprint**
+  One row per component mounted on a
+  player-owned blueprint design.
+  --
+  References component_definition and copies
+  kind and image URLs as install-time snapshots.
+  A blueprint accumulates rows as the player
+  buys chassis, turret, weapon, etc.
+end note
+
 @enduml
 ```
 
@@ -135,6 +157,15 @@ component_definition ||--o{ blueprint_component : "installed as"
 
 ### `component_definition`
 
+Global **parts catalog**: the master list of component types that exist in the game and can be bought or mounted. Each row describes one reusable part type (for example Tank chassis, Scout turret, light machine gun), not a specific installation on a player blueprint.
+
+| Role | Description |
+|------|-------------|
+| Catalog | `component_definition` — what parts exist? |
+| Installation | `blueprint_component` — which parts are on this blueprint? |
+
+Current usage: seeded chassis types (`kind = 'chassis'`) power the Research Blueprints shop and the initial chassis install when a player buys a new blueprint. Future component kinds (turret, weapon, mount, …) are added here as new catalog rows; mounting creates `blueprint_component` rows that reference the definition.
+
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
 | `id` | UUID | PK, NOT NULL | |
@@ -146,6 +177,17 @@ component_definition ||--o{ blueprint_component : "installed as"
 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
 ### `blueprint_component`
+
+**Installed parts** on a player-owned blueprint: each row records one component that has been bought and mounted on a specific blueprint design. This is the build/loadout layer — not the global catalog.
+
+When a part is mounted, the backend inserts a row linking `blueprint_id` to `component_definition_id` and copies `kind`, `game_image_url`, and `menu_image_url` from the catalog. Those copied fields are snapshots; later changes to `component_definition` do not update existing blueprint rows.
+
+| Aspect | Detail |
+|--------|--------|
+| Relationship | Many `blueprint_component` rows per `blueprint`; each references one `component_definition` |
+| Current usage | One chassis row created when a player buys a new blueprint |
+| Future usage | Additional rows for turret, weapon, and other mounted parts as the tech tree grows |
+| Query pattern | Filter by `kind` (for example `chassis`) when resolving display or gameplay data for vehicles |
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
