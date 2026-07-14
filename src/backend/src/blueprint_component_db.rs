@@ -7,6 +7,9 @@ pub struct BlueprintComponentDb {
     pub blueprint_id: Uuid,
     pub component_definition_id: Uuid,
 
+    pub mount_point_id: Uuid,
+    pub parent_component_mount_point_id: Uuid,
+
     pub kind: String,
     pub game_image_url: String,
     pub menu_image_url: String,
@@ -18,6 +21,8 @@ pub async fn create_blueprint_component(
     pool: &sqlx::PgPool,
     blueprint_id: Uuid,
     component_definition_id: Uuid,
+    mount_point_id: Uuid,
+    parent_component_mount_point_id: Uuid,
     kind: String,
     game_image_url: String,
     menu_image_url: String,
@@ -25,12 +30,14 @@ pub async fn create_blueprint_component(
     let blueprint_component = sqlx::query_as!(
         BlueprintComponentDb,
         r#"
-        INSERT INTO blueprint_component (id, blueprint_id, component_definition_id, kind, game_image_url, menu_image_url)
+        INSERT INTO blueprint_component (id, blueprint_id, component_definition_id, mount_point_id, parent_component_mount_point_id, kind, game_image_url, menu_image_url)
         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
-        RETURNING id, blueprint_id, component_definition_id, kind, game_image_url, menu_image_url, created_at
+        RETURNING id, blueprint_id, component_definition_id, mount_point_id, parent_component_mount_point_id, kind, game_image_url, menu_image_url, created_at
         "#,
         blueprint_id,
         component_definition_id,
+        mount_point_id,
+        parent_component_mount_point_id,
         kind,
         game_image_url,
         menu_image_url

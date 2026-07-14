@@ -1,5 +1,6 @@
 -- Add up migration script here
 
+
 CREATE TABLE IF NOT EXISTS component_definition (
     id UUID PRIMARY KEY NOT NULL,
     kind TEXT NOT NULL,
@@ -8,6 +9,13 @@ CREATE TABLE IF NOT EXISTS component_definition (
     menu_image_url TEXT NOT NULL,
     price INT NOT NULL,
 
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS component_mount_point (
+    id UUID PRIMARY KEY NOT NULL,
+    component_definition_id UUID NOT NULL REFERENCES component_definition(id),
+    accepts_kind TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -46,7 +54,10 @@ CREATE TABLE IF NOT EXISTS map (
 CREATE TABLE IF NOT EXISTS blueprint_component (
     id UUID PRIMARY KEY NOT NULL,
     blueprint_id UUID NOT NULL REFERENCES blueprint(id),
+    
     component_definition_id UUID NOT NULL REFERENCES component_definition(id),
+    mount_point_id UUID REFERENCES component_mount_point(id),
+    parent_component_mount_point_id UUID REFERENCES component_mount_point(id),
 
     kind TEXT NOT NULL,
     game_image_url TEXT NOT NULL,

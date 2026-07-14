@@ -19,18 +19,17 @@ pub async fn insert_component_definition(
     game_image_url: &str,
     menu_image_url: &str,
     price: i32,
-) -> Result<(), sqlx::Error> {
+) -> Result<Uuid, sqlx::Error> {
     sqlx::query!(
         r#"
         INSERT INTO component_definition (id, kind, name, game_image_url, menu_image_url, price)
         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+        RETURNING id
         "#,
         kind, name, game_image_url, menu_image_url, price
     )
-    .execute(pool)
-    .await?;
-
-    Ok(())
+    .fetch_one(pool)
+    .await?.id;
 }
 
 pub async fn get_all_chassis_component_definitions(pool: &sqlx::PgPool) -> Result<Vec<ComponentDefinitionDb>, sqlx::Error> {
