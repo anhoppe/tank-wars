@@ -6,6 +6,8 @@ mod blueprint_db;
 mod blueprint_dto;
 mod component_definition_db;
 mod component_definition_dto;
+mod component_mount_point_db;
+mod blueprint_component_mount_point_db;
 mod handler;
 mod map_db;
 mod map_dto;

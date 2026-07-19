@@ -1,4 +1,5 @@
-use crate::component_definition_db::insert_component_definition;
+use crate::{component_definition_db::insert_component_definition, 
+    component_mount_point_db::insert_component_mount_point};
 
 const CHASSIS_KIND: &str = "chassis";
 const TURRET_KIND: &str = "turret";
@@ -19,7 +20,7 @@ pub async fn seed_database(pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
         CHASSIS_KIND, 
         "Truck", 
         "player/truck.png",
-        "vehicles/truck.png", 
+        "vehicles/truck.png",
         50).await?;
 
     insert_component_mount_point(pool, truck_id, LIGHT_GUN_KIND).await?;

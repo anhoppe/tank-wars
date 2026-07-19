@@ -22,3 +22,4 @@ Every document added to this chapter should start with the following header:
 |---|---|---|---|
 | [ADR-001](ADR-001-component-model-and-storage.md) | Component model and storage for combat vehicles | Accepted (amended 2026-07-12) | 2026-06-27 |
 | [ADR-002](ADR-002-rule-evaluation-strategy-draft.md) | Rule evaluation strategy for blueprint validation and balance | Draft | 2026-06-27 |
+| [ADR-003](ADR-003-application-layer-and-handlers.md) | Application layer vs fat handlers (pragmatic hexagon) | Accepted | 2026-07-19 |

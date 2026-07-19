@@ -7,6 +7,9 @@ use crate::{
     AppState,
     handler::{buy_blueprint_for_player,
         buy_vehicle_for_player,
+        get_available_mount_points_for_blueprint,
+        get_compatible_component_definitions_for_blueprint_component,
+        get_component_definitions_by_kind,
         get_enemies, 
         get_blueprints_of_player, 
         get_player_map, 
@@ -29,6 +32,8 @@ pub async fn serve(pool: &PgPool) {
     // build our application with a single route
     let app = Router::new()
         .route("/api/enemies/{player_id}", axum::routing::get(get_enemies))
+        .route("/api/blueprints/{blueprint_definition_id}/available-mount-points", axum::routing::get(get_available_mount_points_for_blueprint))
+        .route("/api/blueprints/{blueprint_definition_id}/compatible-components", axum::routing::get(get_compatible_component_definitions_for_blueprint_component))
         .route("/api/blueprints/{player_id}", axum::routing::get(get_blueprints_of_player).post(buy_blueprint_for_player))
         .route("/api/fleet/{player_id}", axum::routing::get(get_vehicles_of_player).post(buy_vehicle_for_player))
         .route("/api/map/{player_id}", axum::routing::get(get_player_map).put(set_player_map))
@@ -38,6 +43,7 @@ pub async fn serve(pool: &PgPool) {
         .route("/api/player", axum::routing::post(get_or_create_player))
         .route("/api/vehicle/{vehicle_id}", axum::routing::get(get_vehicle_by_id))
         .route("/api/vehicle-types", axum::routing::get(get_vehicle_types))
+        .route("/api/vehicle-types/{kind}", axum::routing::get(get_component_definitions_by_kind))
         .layer(cors)
         .with_state(Arc::new(AppState { db: pool.clone() }));
 

@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
 import {useNavigate, useLocation} from 'react-router-dom';
 
-import { getBlueprintsOfPlayer, getVehicleTypes, buyBlueprintForPlayer} from './api';
+import { 
+    getAvailableExtensionComponentsByKind,
+    getAvailableMountPointsForBlueprint, 
+    getBlueprintsOfPlayer, 
+    getVehicleTypes, 
+    buyBlueprintForPlayer} from './api';
 
 
 function ResearchBlueprints() {
     const navigate = useNavigate();
     const location = useLocation();
     const initialPlayer = location.state?.player;
-
+    
+    const [availableExtensionComponents, setAvailableExtensionComponents] = useState([]);
+    const [availableMountPoints, setAvailableMountPoints] = useState([]);
     const [blueprints, setBlueprints] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(initialPlayer);
     const [selectedId, setSelectedId] = useState('');
+    const [selectedMountPoint, setSelectedMountPoint] = useState('');
     const [showVehicleTypes, setShowVehicleTypes] = useState(false);
     const [vehicleTypes, setVehicleTypes] = useState([]);
 
@@ -31,17 +39,29 @@ function ResearchBlueprints() {
         load();
     }, [currentPlayer]);
 
-    async function setPlayerBlueprints() {
-        const blueprints = await getBlueprintsOfPlayer(currentPlayer.id);
-        setBlueprints(Array.isArray(blueprints) ? blueprints : []);
-    }
-
     async function buyBlueprint(chassisId, chassisPrice) {
         if (currentPlayer.money < chassisPrice) {
             return;
         }
         const player = await buyBlueprintForPlayer(currentPlayer.id, chassisId);
         setCurrentPlayer(player);
+    }
+
+    async function setPlayerBlueprints() {
+        const blueprints = await getBlueprintsOfPlayer(currentPlayer.id);
+        setBlueprints(Array.isArray(blueprints) ? blueprints : []);
+    }
+
+    async function showAvailableMountPoints(blueprintId) {
+        setShowVehicleTypes(false);
+        const availableMountPoints = await getAvailableMountPointsForBlueprint(blueprintId);
+        setAvailableMountPoints(Array.isArray(availableMountPoints) ? availableMountPoints : []);
+    }
+
+    async function showAvailableExtensionComponents(mountPointKind) {
+        setSelectedMountPoint(mountPointKind);
+        const availableExtensionComponents = await getAvailableExtensionComponentsByKind(mountPointKind);
+        setAvailableExtensionComponents(Array.isArray(availableExtensionComponents) ? availableExtensionComponents : []);
     }
 
     return (
@@ -51,7 +71,11 @@ function ResearchBlueprints() {
                 <select
                     size={8}
                     value={selectedId}
-                    onChange={(e) => setSelectedId(e.target.value)}
+                    onChange={(e) => {
+                        let id = e.target.value;
+                        setSelectedId(id);
+                        showAvailableMountPoints(id);
+                    }}
                     style={{ minWidth: 320}}
                     >
                         {blueprints.length === 0 ? (
@@ -66,6 +90,8 @@ function ResearchBlueprints() {
                 </select>
                 <div style={{ marginTop: 3 }}>
                     <button onClick={() => {
+                        setAvailableMountPoints([]);
+                        setSelectedMountPoint('');
                         setShowVehicleTypes(!showVehicleTypes)
                     }}>Buy</button>
                 </div>
@@ -73,7 +99,7 @@ function ResearchBlueprints() {
                     <button onClick={() => navigate('/main', { state: { player: currentPlayer } })}>Back</button>
                 </div>
             </div>
-            {showVehicleTypes && (
+            <div>{showVehicleTypes && (
                 <div style={{ marginLeft: 20, minWidth: 200, borderLeft: '1px solid #ccc', paddingLeft: 10 }}>
                     <h3>Vehicle Types</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -103,7 +129,32 @@ function ResearchBlueprints() {
                         ))}
                     </div>
                 </div>
-            )}
+            )}</div>
+
+            <div>{availableMountPoints.length > 0 && (
+                <div style={{ marginLeft: 20, minWidth: 200, borderLeft: '1px solid #ccc', paddingLeft: 10 }}>
+                    <h3>Available Slots</h3>
+                    {availableMountPoints.map((acceptsKind) => (
+                        <div key={acceptsKind} onClick={(e) => {
+                            let kind = e.target.outerText;
+                            showAvailableExtensionComponents(kind);
+                        }}>
+                            {acceptsKind}
+                        </div>
+                    ))}
+                </div>
+            )}</div>
+
+            <div>{selectedMountPoint !== '' && (
+                <div style={{ marginLeft: 20, minWidth: 200, borderLeft: '1px solid #ccc', paddingLeft: 10 }}>
+                    <h3>Available extension components</h3>
+                    {availableExtensionComponents.map((component) => (
+                        <img src={require(`./assets/${component.menu_image_url}`)} 
+                        alt={component.name} 
+                        style={{ width: 64, height: 64, objectFit: 'contain', margin: '4px 0' }} />
+                    ))}
+                </div>
+            )}</div>
         </div>
     );
 }

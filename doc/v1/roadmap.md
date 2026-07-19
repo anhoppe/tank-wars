@@ -15,10 +15,10 @@ Player can
 ## Backlog
 
 ### TW-1 Allow buying turret component
- - Player can buy turret component and light machine gun
- - **Tank** has a turret mount point; turret can host a main gun (turret rotates in game)
- - **Truck** has a machine-gun mount point only (no turret); MG fires in truck facing direction
- - It is possible to add the components to the blueprint
+ - Player can buy turret, light machine gun, and main gun components
+ - **Tank:** chassis → turret (`accepts_kind = turret`) → heavy gun on turret (turret rotates in game)
+ - **Truck:** chassis → light gun only (`accepts_kind = light_gun`; no turret); MG fires in truck facing direction
+ - Instance mount points copied from catalog when parts are installed on a blueprint
  - In game, Tank can rotate turret and fire; Truck can fire MG along hull bearing
 
 ### TW-2 Player can destroy enemy vehicles

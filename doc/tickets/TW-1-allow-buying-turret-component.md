@@ -4,7 +4,7 @@
 |-------|-------|
 | **Purpose & Intent** | Implementation plan for mounting turret and light machine gun components onto existing player blueprints, and using them in combat. |
 | **Incoming** | [Roadmap TW-1](../v1/roadmap.md), [ADR-001](../arc42/09_architecture_decisions/ADR-001-component-model-and-storage.md) (simplified mount-point model), [blueprints.md](../v1/blueprints.md) |
-| **Outgoing** | DB migration, backend mount API, Blueprint Workshop UI, game rendering/controls; follow-up updates to `08_01_database_layout.md` |
+| **Outgoing** | DB migration, backend mount API, Blueprint Workshop UI, game rendering/controls; schema documented in [08_01](../arc42/08_crosscutting_concepts/08_01_database_layout.md) |
 
 ## Status
 
@@ -19,11 +19,11 @@ Player can customize **Tank** and **Truck** blueprints differently:
 
 ## Acceptance criteria
 
-- [ ] Catalog contains turret and weapon `component_definition` rows (plus existing chassis types).
-- [ ] **Tank** chassis offers `accepts_kind = turret`; **Truck** chassis offers `accepts_kind = weapon` (no turret slot).
-- [ ] Turret definition offers `accepts_kind = weapon` (main gun on turret).
-- [ ] Player selects a blueprint in Research Blueprints, sees chassis-appropriate slots (Tank: turret → weapon; Truck: weapon only), and **buys & mounts** compatible components.
-- [ ] Mounting validates: `child.kind = mount_point.accepts_kind`, slot not already occupied, player has enough money.
+- [ ] Catalog contains Scout turret, Light MG, and Main Gun `component_definition` rows (plus existing chassis types).
+- [ ] **Tank** chassis catalog offers `accepts_kind = turret`; **Truck** offers `accepts_kind = light_gun` (no turret).
+- [ ] Scout turret catalog offers `accepts_kind = heavy_gun`.
+- [ ] Player selects a blueprint in Research Blueprints, sees chassis-appropriate instance slots (Tank: turret → heavy_gun; Truck: light_gun only), and **buys & mounts** compatible components.
+- [ ] Mounting validates: `child.kind = instance_slot.accepts_kind`, slot not already occupied, player has enough money.
 - [ ] Blueprint `buying_price` increases when components are mounted.
 - [ ] Fleet can still buy a vehicle from the updated blueprint.
 - [ ] In `GameScene`, **Tank** shows chassis + rotatable turret + weapon; **Truck** shows chassis + fixed MG.
@@ -43,30 +43,39 @@ Player can customize **Tank** and **Truck** blueprints differently:
 
 ## Architecture (agreed)
 
-Per [ADR-001 amendment](../arc42/09_architecture_decisions/ADR-001-component-model-and-storage.md): **four tables**, one mount rule.
+Per [ADR-001](../arc42/09_architecture_decisions/ADR-001-component-model-and-storage.md) and [08_01 database layout](../arc42/08_crosscutting_concepts/08_01_database_layout.md): **catalog** mount points + **instance** mount points on each installed host.
+
+### Catalog vs. instance
+
+| Layer | Table | Role |
+|-------|--------|------|
+| Catalog | `component_mount_point` | Tank offers `turret` slot (global seed) |
+| Instance | `blueprint_component_mount_point` | Copied onto installed Tank row on a blueprint |
+| Child | `blueprint_component` | `mounted_on_slot_id` → parent's instance slot |
 
 ### Mount rule
 
 ```
-child.component_definition.kind == component_mount_point.accepts_kind
+child.kind == blueprint_component_mount_point.accepts_kind
+AND slot is empty (no other child references that slot id)
 ```
 
-### `blueprint_component` on install
+### On install
 
-| Source | Stored on `blueprint_component` |
-|--------|----------------------------------|
-| Installed part (`component_definition`) | `component_definition_id` + snapshot copy: `kind`, `game_image_url`, `menu_image_url` |
-| Slot used (`component_mount_point`) | `mount_point_id` (FK only) |
-| Assembly tree | `parent_blueprint_component_id` |
+| Source | Stored on |
+|--------|-----------|
+| Installed part | `blueprint_component.component_definition_id` + snapshots (`kind`, images) |
+| Parent slot | `blueprint_component.mounted_on_slot_id` → `blueprint_component_mount_point.id` |
+| Host's new slots | `blueprint_component_mount_point` rows copied from catalog when host is installed |
 
-Root chassis row: `parent_blueprint_component_id` and `mount_point_id` are `NULL`.
+Root chassis: `mounted_on_slot_id = NULL`.
 
 ### Chassis archetypes (gameplay difference)
 
 | Chassis | Mount points on chassis | Assembly depth | Combat behaviour |
 |---------|-------------------------|----------------|----------------|
-| **Tank** | `accepts_kind = turret` | chassis → turret → weapon | Turret rotates independently; main gun fires along turret angle |
-| **Truck** | `accepts_kind = weapon` | chassis → weapon (MG) | No turret; MG fires along truck facing only |
+| **Tank** | `accepts_kind = turret` (catalog) | chassis → turret → heavy_gun | Turret rotates; main gun along turret |
+| **Truck** | `accepts_kind = light_gun` (catalog) | chassis → light_gun | MG along hull only |
 
 This is the main reason mount points are per-`component_definition`: Truck and Tank chassis definitions differ in which slots they offer.
 
@@ -75,28 +84,30 @@ This is the main reason mount points are per-`component_definition`: Truck and T
 **Tank blueprint**
 
 ```text
-blueprint "Tank #1"
-└─ blueprint_component (chassis: Tank)
-   └─ blueprint_component (turret: Scout)       mount_point_id → Tank.turret slot
-      └─ blueprint_component (weapon: Main gun) mount_point_id → Scout.weapon slot
+bc1  blueprint_component (Tank)              mounted_on_slot_id: NULL
+  bcmp1  instance slot (accepts turret)
+    bc2  blueprint_component (Scout)        mounted_on_slot_id → bcmp1
+      bcmp2  instance slot (accepts heavy_gun)
+        bc3  blueprint_component (Main Gun) mounted_on_slot_id → bcmp2
 ```
 
 **Truck blueprint**
 
 ```text
-blueprint "Truck #1"
-└─ blueprint_component (chassis: Truck)
-   └─ blueprint_component (weapon: Light MG)    mount_point_id → Truck.weapon slot
+bc1  blueprint_component (Truck)           mounted_on_slot_id: NULL
+  bcmp1  instance slot (accepts light_gun)
+    bc2  blueprint_component (Light MG)    mounted_on_slot_id → bcmp1
 ```
 
 ### Seed data (v1)
 
 | `component_definition` | `kind` | Mount points offered |
 |------------------------|--------|----------------------|
-| Tank | `chassis` | `accepts_kind = turret` |
-| Truck | `chassis` | `accepts_kind = weapon` |
-| Scout turret | `turret` | `accepts_kind = weapon` |
-| Light MG | `weapon` | — (used on Truck chassis or Tank turret) |
+| Tank | `chassis` | `turret` |
+| Truck | `chassis` | `light_gun` |
+| Scout turret | `turret` | `heavy_gun` |
+| Light MG | `light_gun` | — |
+| Main Gun | `heavy_gun` | — |
 
 ---
 
@@ -104,34 +115,31 @@ blueprint "Truck #1"
 
 ### Phase 1 — Database
 
-1. Migration: create `component_mount_point` (`id`, `host_component_id`, `accepts_kind`, unique on `(host_component_id, accepts_kind)`).
-2. Migration: extend `blueprint_component` with `parent_blueprint_component_id`, `mount_point_id` (nullable FKs).
-3. Backfill existing chassis rows: `parent_blueprint_component_id = NULL`, `mount_point_id = NULL`.
-4. Seed mount points: Tank `accepts_kind=turret`; Truck `accepts_kind=weapon`; Scout turret `accepts_kind=weapon`.
-5. Seed `component_definition` rows for Scout turret, Light MG, and (if needed) a distinct main-gun weapon for the Tank turret.
+1. Migration: `component_mount_point` (catalog; exists).
+2. Migration: add `blueprint_component_mount_point` (`blueprint_component_id`, `accepts_kind`, `source_mount_point_id`).
+3. Migration: `blueprint_component.mounted_on_slot_id` (replace `mount_point_id` / `parent_component_mount_point_id`).
+4. On host install: copy catalog slots → instance slots on that `blueprint_component`.
+5. Seed catalog: Tank→turret, Truck→light_gun, Scout→heavy_gun; seed Scout, Light MG, Main Gun definitions.
 
 ### Phase 2 — Backend
 
-1. **`component_mount_point_db`** — CRUD/read by `host_component_id`.
-2. **Mount validator** (inline in handler or small module):
-   - Resolve parent `blueprint_component` for the target blueprint.
-   - Load parent's `component_definition` and its mount points.
-   - Match `accepts_kind` to child `kind`.
-   - Reject if `(parent_blueprint_component_id, mount_point_id)` already exists.
-   - Deduct `component_definition.price` from player; add to `blueprint.buying_price`.
-3. **New endpoint** — e.g. `POST /api/blueprints/{player_id}/components` body: `{ blueprintId, componentDefinitionId, parentBlueprintComponentId }`.
-4. **Extend GET blueprint** (or new DTO) — return assembly tree: installed components, empty mount points per parent, prices.
-5. **Extend `get_vehicle_types`** or add **`GET /api/component-definitions?kind=turret|weapon`** for the component shop.
+1. **`component_mount_point_db`** — read catalog slots by `component_definition_id`.
+2. **`blueprint_component_mount_point_db`** — create instance slots on host install; list slots for a host.
+3. **Mount validator**
+   - Find empty `blueprint_component_mount_point` on parent host where `accepts_kind = child.kind`.
+   - Reject if slot already has a child (`mounted_on_slot_id` in use).
+   - Insert child; copy child's catalog slots to instance rows on child.
+3. **New endpoint** — e.g. `POST /api/blueprints/{player_id}/components` body: `{ blueprintId, componentDefinitionId, parentInstanceSlotId }`.
+4. **Extend GET blueprint** — return assembly: installed parts, instance slots per host, which slots are empty.
+5. **Extend `get_vehicle_types`** or add **`GET /api/component-definitions?kind=turret|light_gun|heavy_gun`** for the component shop.
 6. Update **`vehicle_dto` / `vehicle_on_map_dto`** — resolve display from assembly (chassis + turret at minimum) instead of chassis-only.
 
 ### Phase 3 — Frontend (Blueprint Workshop)
 
 Evolve [ResearchBlueprints.js](../../src/frontend/tank-wars/src/Game/ResearchBlueprints.js):
 
-1. Selecting a blueprint loads its assembly (slots depend on chassis type).
-2. Show slot list driven by mount points on the blueprint’s chassis:
-   - **Tank:** Chassis ✓ → Turret (empty/filled) → Weapon (empty/filled, on turret)
-   - **Truck:** Chassis ✓ → Machine gun (empty/filled) — no turret row
+1. Selecting a blueprint loads assembly with **instance slots** on each installed host.
+2. Slot list from `blueprint_component_mount_point` on selected host (empty/filled).
 3. Clicking an empty slot filters the shop to components whose `kind` matches the slot's `accepts_kind`.
 4. **Buy & Mount** calls the new API; refresh blueprint price and slot state.
 5. Disable incompatible or unaffordable options with a short reason.
@@ -157,9 +165,11 @@ Enemy vehicles on opponent map: render from assembly when available; chassis-onl
 {
   "blueprintId": "uuid",
   "componentDefinitionId": "uuid",
-  "parentBlueprintComponentId": "uuid"
+  "parentInstanceSlotId": "uuid"
 }
 ```
+
+`parentInstanceSlotId` is the `blueprint_component_mount_point.id` on the host (empty slot).
 
 **Success:** updated player (money), blueprint summary, new `blueprint_component` id.
 
@@ -167,7 +177,7 @@ Enemy vehicles on opponent map: render from assembly when available; chassis-onl
 
 ### `GET /api/blueprints/{player_id}/{blueprint_id}` (or extend list response)
 
-Returns blueprint with nested `components[]` and per-parent `availableMountPoints[]` / `occupiedMountPointIds[]`.
+Returns blueprint with `components[]` and per-host `instanceMountPoints[]` (empty slots have no child referencing them).
 
 ---
 
@@ -180,11 +190,11 @@ Returns blueprint with nested `components[]` and per-parent `availableMountPoint
 │ My blueprints   │ Assembly                 │ Shop (filtered)     │
 │ > Tank #1       │ [chassis] Tank     ✓     │ Scout turret  120   │
 │   Truck #1      │ [turret]  (empty)  ←sel │ [Buy & Mount]       │
-│                 │ [weapon]  (locked)       │                     │
+│                 │ [heavy gun] (locked)   │                     │
 └─────────────────┴──────────────────────────┴─────────────────────┘
 ```
 
-Weapon slot on turret unlocks after turret is mounted.
+Weapon slot on turret unlocks after turret is mounted (`accepts_kind = heavy_gun`).
 
 **Truck blueprint selected**
 
@@ -204,16 +214,15 @@ No turret slot on Truck.
 
 ### Backend
 
-- Mount turret on **Tank** blueprint → valid; correct `mount_point_id` and parent FK.
-- Mount Light MG on **Truck** chassis → valid (direct child of chassis).
-- Reject turret on **Truck** blueprint (no `accepts_kind = turret` on Truck chassis).
-- Reject weapon on **Tank** chassis without turret parent (weapon must mount on turret’s weapon slot).
-- Reject second component in the same occupied slot.
+- Mount turret on **Tank** → child `mounted_on_slot_id` points at chassis instance slot.
+- Mount Light MG on **Truck** → valid.
+- Reject turret on **Truck** (no instance slot with `accepts_kind = turret`).
+- Reject second child on same instance slot.
 - Money and `buying_price` updated correctly.
 
 ### Frontend
 
-- **Tank:** empty turret slot, then weapon slot on turret after mount.
+- **Tank:** empty turret instance slot, then heavy_gun slot on turret after mount.
 - **Truck:** single machine-gun slot only; no turret row.
 - After mount, slot shows installed part name/image.
 - Buy vehicle from Fleet still works.
@@ -226,13 +235,12 @@ No turret slot on Truck.
 
 ---
 
-## Documentation follow-up
+## Documentation
 
-- Update [08_01_database_layout.md](../arc42/08_crosscutting_concepts/08_01_database_layout.md) ER diagram with `component_mount_point` and new `blueprint_component` columns.
+- Authoritative schema: [08_01_database_layout.md](../arc42/08_crosscutting_concepts/08_01_database_layout.md).
 - Mark TW-1 done in [roadmap.md](../v1/roadmap.md) when acceptance criteria are met.
 
 ## Open decisions
 
 - Asset keys for turret, main gun, and truck MG sprites (placeholders OK for first slice).
-- Separate `component_definition` for Tank main gun vs. Truck Light MG, or one shared `weapon` row (mount point still differs by chassis).
 - Whether gameplay phase is part of the same PR or a follow-up PR after workshop + API land.

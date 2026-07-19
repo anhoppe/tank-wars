@@ -5,11 +5,13 @@ use axum::{Json, extract::{Path, State}, http::StatusCode, response::IntoRespons
 use serde_json::json;
 
 use crate::{AppState, 
-    blueprint_component_db::create_blueprint_component,
+    blueprint_component_db::{create_blueprint_component, get_blueprint_component_chassis_by_blueprint_id},
+    blueprint_component_mount_point_db::{create_blueprint_component_mount_point, get_blueprint_component_mount_points_by_blueprint_component_id},
     blueprint_db::{BlueprintDb, create_blueprint, get_blueprint_by_id},
     blueprint_dto::BlueprintDto,
-    component_definition_db::{get_component_definition_by_id, get_all_chassis_component_definitions},
+    component_definition_db::{ComponentDefinitionDb, get_component_definition_by_id, get_all_chassis_component_definitions},
     component_definition_dto::ComponentDefinitionDto,
+    component_mount_point_db::get_component_mount_points_by_component_definition_id,
     player_db::{PlayerDb, get_player_by_id, insert_player, update_player}, 
     player_dto::PlayerDto, 
     map_dto::MapDto, 
@@ -36,11 +38,13 @@ pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
 
     println!("Received request to buy blueprint for player_id: {}, component_definition_id: {}", player_id, component_definition_id);
 
+    // When buying a blueprint, the chassis is automatically added to the blueprint, there is never an empty blueprint.
     let chassis = match get_component_definition_by_id(&data.db, component_definition_id).await {
         Ok(chassis) => chassis,
         Err(_) => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Component definition not found"})))),
     };
 
+    // Get the player and purchase the chassis if they have enough money
     let mut player = load_player_or_404(&data.db, player_id).await?;
 
     if player.money < chassis.price {
@@ -52,14 +56,32 @@ pub async fn buy_blueprint_for_player(State(data): State<Arc<AppState>>,
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to update player"}))))?;
 
+    // Create the blueprint and add the chassis to it
     let blueprint_name = chassis.name.clone();
     let blueprint = create_blueprint(&data.db, player_id, blueprint_name, chassis.price)
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint"}))))?;
     
-    create_blueprint_component(&data.db, blueprint.id, component_definition_id, chassis.kind, chassis.game_image_url, chassis.menu_image_url)
-    .await
-    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint component"}))))?;
+    // Add the chassis as blueprint component to the blueprint
+    let blueprint_component = create_blueprint_component(&data.db, 
+        blueprint.id, 
+        component_definition_id, 
+        chassis.kind, 
+        chassis.game_image_url, 
+        chassis.menu_image_url)
+    .await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint component"}))))?;
+
+    // When buying a blueprint, the chassis component copies the mounting points of the component definition.
+    let component_mount_points = get_component_mount_points_by_component_definition_id(&data.db, component_definition_id).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query component mount points"}))))?;
+
+    // Create as blueprint component mount points for the blueprint component
+    for component_mount_point in component_mount_points {
+        println!("Creating blueprint component mount point for component_mount_point: {:?}", component_mount_point);
+        _ = create_blueprint_component_mount_point(&data.db, 
+            blueprint_component.id, 
+            component_mount_point.id,
+            component_mount_point.accepts_kind).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to create blueprint component mount point"}))))?;
+    }
 
     let player_dto: PlayerDto = player.into();
 
@@ -105,6 +127,37 @@ pub async fn buy_vehicle_for_player(State(data): State<Arc<AppState>>,
     let player_dto: PlayerDto = player.into();
 
     Ok(Json(json!(player_dto)))
+}
+
+pub async fn get_available_mount_points_for_blueprint(State(data): State<Arc<AppState>>,
+    Path(blueprint_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    
+    println!("Received request for available slots for blueprint_id: {}", blueprint_id);
+    
+    let chassis_blueprint_component = get_blueprint_component_chassis_by_blueprint_id(&data.db, blueprint_id).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query blueprint component"}))))?;
+    
+    // Get the blueprint component mount points of the blueprint
+    let blueprint_component_mount_points = get_blueprint_component_mount_points_by_blueprint_component_id(&data.db, chassis_blueprint_component.id).await;
+
+    match blueprint_component_mount_points {
+        Ok(blueprint_component_mount_points) => {
+            let available_slots: Vec<String> = blueprint_component_mount_points.iter().map(|blueprint_component_mount_point| blueprint_component_mount_point.accepts_kind.clone()).collect();
+            Ok(Json(json!(available_slots)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query blueprint component mount points: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query blueprint component mount points"}))))
+        }
+    }
+}
+
+pub async fn get_component_definitions_by_kind(State(data): State<Arc<AppState>>,
+    Path(kind): Path<String>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    let component_definitions = crate::component_definition_db::get_component_definitions_by_kind(&data.db, &kind).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query component definitions"}))))?;
+    Ok(Json(json!(component_definitions)))
 }
 
 pub async fn get_vehicles_of_player(State(data): State<Arc<AppState>>,
@@ -196,6 +249,40 @@ pub async fn get_blueprints_of_player(State(data): State<Arc<AppState>>,
         Err(err) => {
             eprintln!("Failed to query blueprints: {}", err);
             Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query blueprints"}))))
+        }
+    }
+}
+
+pub async fn get_compatible_component_definitions_for_blueprint_component(State(data): State<Arc<AppState>>,
+    Path(blueprint_definition_id): Path<uuid::Uuid>)
+    -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    println!("Received request for compatible component definitions for blueprint_definition_id: {}", blueprint_definition_id);
+
+    // get the blueprint component mount points of the blueprint component
+    let blueprint_component_mount_points = get_blueprint_component_mount_points_by_blueprint_component_id(&data.db, blueprint_definition_id).await;
+
+    match blueprint_component_mount_points {
+        Ok(blueprint_component_mount_points) => {
+            // First get all accepted kinds of the blueprint component mount points
+            let compatible_kinds : Vec<String> = blueprint_component_mount_points.iter().map(|blueprint_component_mount_point| blueprint_component_mount_point.accepts_kind.clone()).collect();
+                
+            // Then get all component definitions that have one of the accepted kinds
+            let mut compatible_component_definitions : Vec<ComponentDefinitionDb> = Vec::new();
+            
+            for compatible_kind in compatible_kinds {
+                let compatible_component_definitions_for_kind = crate::component_definition_db::get_component_definitions_by_kind(&data.db, &compatible_kind).await.unwrap();
+                compatible_component_definitions.extend(compatible_component_definitions_for_kind);
+            }
+
+            // Convert the component definitions to DTOs
+            let compatible_component_definition_dtos: Vec<ComponentDefinitionDto> = compatible_component_definitions.into_iter().map(|component_definition| component_definition.into()).collect();
+
+            Ok(Json(json!(compatible_component_definition_dtos)))
+        }
+        Err(err) => {
+            eprintln!("Failed to query blueprint component mount points: {}", err);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to query blueprint component mount points"}))))
         }
     }
 }

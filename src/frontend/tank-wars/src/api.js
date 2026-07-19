@@ -24,6 +24,22 @@ export async function buyVehicleForPlayer(playerId, blueprintId) {
     return await response.json();
 }
 
+export async function getAvailableExtensionComponentsByKind(kind) {
+    const response = await fetch(`${BASE_URL}/vehicle-types/${kind}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch available component definitions for kind ${kind}`);
+    }
+    return await response.json();
+}
+
+export async function getAvailableMountPointsForBlueprint(blueprintId) {
+    const response = await fetch(`${BASE_URL}/blueprints/${blueprintId}/available-mount-points`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch available mount points for blueprint ${blueprintId}`);
+    }
+    return await response.json();
+}
+
 export async function getBlueprintsOfPlayer(playerId) {
     const response = await fetch(`${BASE_URL}/blueprints/${playerId}`);
     if (!response.ok) {
